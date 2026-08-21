@@ -77,10 +77,33 @@ export function parseHomeAssistantDateTime(hass, entityId, now = new Date()) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseDateAttribute(value) {
+  const date = new Date(String(value || ''));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function resolveSunDates(config = {}, hass, now = new Date()) {
+  const configuredSunrise = parseHomeAssistantDateTime(hass, config.sunrise_entity, now);
+  const configuredSunset = parseHomeAssistantDateTime(hass, config.sunset_entity, now);
+  if (configuredSunrise && configuredSunset) return { sunrise: configuredSunrise, sunset: configuredSunset, source: 'helpers' };
+
+  const sun = hass?.states?.[String(config.sun_entity || 'sun.sun')];
+  const nextRising = parseDateAttribute(sun?.attributes?.next_rising);
+  const nextSetting = parseDateAttribute(sun?.attributes?.next_setting);
+  if (!nextRising || !nextSetting) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const aboveHorizon = sun?.state === 'above_horizon';
+  return {
+    sunrise: aboveHorizon ? new Date(nextRising.getTime() - day) : nextRising,
+    sunset: aboveHorizon ? nextSetting : new Date(nextSetting.getTime() - day),
+    source: 'sun.sun',
+  };
+}
+
 export function resolveSolarPhase(config = {}, hass, now = new Date()) {
-  const sunrise = parseHomeAssistantDateTime(hass, config.sunrise_entity, now);
-  const sunset = parseHomeAssistantDateTime(hass, config.sunset_entity, now);
-  if (!sunrise || !sunset) return 'nuit-profonde';
+  const dates = resolveSunDates(config, hass, now);
+  if (!dates) return 'nuit-profonde';
+  const { sunrise, sunset } = dates;
   const minute = 60000;
   const toRise = (sunrise - now) / minute;
   const fromRise = (now - sunrise) / minute;

@@ -1068,6 +1068,9 @@ background_dynamic:
   fallback: /local/home24/backgrounds/home24-day-v4.png
 ```
 
+When the optional `input_datetime` helpers do not exist, the preset automatically derives the phase
+from Home Assistant's built-in `sun.sun` entity.
+
 ---
 
 ## 🛠 Troubleshooting

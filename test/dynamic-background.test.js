@@ -4,6 +4,7 @@ import {
   resolveDynamicBackground,
   resolveHome24SceneKey,
   resolveSolarPhase,
+  resolveSunDates,
   resolveTimeSlot,
   resolveWeatherGroup,
 } from '../src/media/dynamic-background.js';
@@ -16,6 +17,19 @@ test('time slots support normal and overnight ranges', () => {
   assert.equal(resolveTimeSlot(slots, new Date(2026, 7, 21, 12, 0)), 'day');
   assert.equal(resolveTimeSlot(slots, new Date(2026, 7, 21, 23, 0)), 'night');
   assert.equal(resolveTimeSlot(slots, new Date(2026, 7, 21, 6, 30)), 'night');
+});
+
+test('Home24 solar phases fall back to sun.sun when helpers are unavailable', () => {
+  const now = new Date('2026-08-21T14:32:00+02:00');
+  const hass = { states: { 'sun.sun': {
+    state: 'above_horizon',
+    attributes: {
+      next_rising: '2026-08-22T05:08:00+00:00',
+      next_setting: '2026-08-21T18:55:00+00:00',
+    },
+  } } };
+  assert.equal(resolveSunDates({}, hass, now)?.source, 'sun.sun');
+  assert.equal(resolveSolarPhase({}, hass, now), 'jour');
 });
 
 test('Home24 preset preserves solar phases and special weather scene names', () => {

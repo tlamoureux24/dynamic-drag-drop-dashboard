@@ -95,6 +95,105 @@ const FR = Object.freeze({
   'Check package sync': 'Vérifier la synchronisation des modules', 'Select theme…': 'Sélectionner un thème…',
   'Live width cap': 'Largeur réelle maximale', 'Max scale': 'Échelle maximale', 'Empty or 0': 'Vide ou 0',
   'Edge': 'Bord', 'min': 'min',
+  'Wiki: Layout': 'Wiki : disposition', 'Wiki: Appearance': 'Wiki : apparence',
+  'Wiki: Behaviour': 'Wiki : comportement', 'Wiki: Tabs': 'Wiki : onglets',
+  'Wiki: Layers': 'Wiki : calques', 'Wiki: Screen saver': 'Wiki : économiseur d’écran',
+  'Wiki: Packages': 'Wiki : modules', 'Wiki: Overview': 'Wiki : vue d’ensemble',
+  'Fine-tune grid density, snapping, responsive sizing, and how cards sit on the page.':
+    'Ajustez la densité de la grille, l’alignement, le dimensionnement adaptatif et la position des cartes.',
+  'Tune themes, background media, card surfaces, shadows, and dashboard-wide effects.':
+    'Ajustez les thèmes, les médias de fond, les surfaces des cartes, les ombres et les effets globaux.',
+  'Configure animation, auto save, edit access, debug logging, and how much Home Assistant chrome stays visible.':
+    'Configurez les animations, l’enregistrement automatique, l’accès à l’édition, le débogage et les éléments Home Assistant visibles.',
+  'Decide when the overlay appears, what it shows, and which design it uses.':
+    'Choisissez quand la surcouche apparaît, ce qu’elle affiche et le style qu’elle utilise.',
+  'Create views for different rooms, modes, or dashboards without duplicating the whole layout.':
+    'Créez des vues pour différentes pièces ou différents modes sans dupliquer toute la disposition.',
+  'Toggle groups of cards for modes like day, night, guests, or maintenance without moving them.':
+    'Affichez ou masquez des groupes de cartes selon le mode jour, nuit, invités ou maintenance, sans les déplacer.',
+  'Build automations, scripts, helpers, sensors, and custom package blocks from one place.':
+    'Créez des automatisations, scripts, helpers, capteurs et blocs YAML personnalisés depuis un seul endroit.',
+  'Use a stable key to reuse the same saved layout after deleting or recreating the dashboard card.':
+    'Utilisez une clé stable pour retrouver la même disposition après suppression ou recréation de la carte.',
+  'Smaller cells give finer placement; larger cells keep layouts easier to align.':
+    'Des cellules plus petites offrent un placement précis ; des cellules plus grandes facilitent l’alignement.',
+  'Use these as starting points for common displays. You can still switch to Auto, a custom size, or a preset below.':
+    'Utilisez ces tailles comme point de départ. Vous pourrez toujours choisir le mode automatique, une taille personnalisée ou un préréglage.',
+  'Cards follow grid lines while you drag, which makes precise layouts easier.':
+    'Les cartes suivent la grille pendant leur déplacement afin de faciliter un placement précis.',
+  'Stops cards from landing on top of each other while you edit.':
+    'Empêche les cartes de se superposer pendant la modification.',
+  "Auto chooses separate Desktop, Tablet, and Mobile layouts from the browser's CSS viewport. For one fixed wall panel, use Fixed (custom) or Preset.":
+    'Le mode automatique choisit une disposition distincte pour ordinateur, tablette et mobile. Pour un écran mural fixe, utilisez Fixe (personnalisé) ou Préréglage.',
+  'Keeps labels readable when the canvas scales. Useful for wall panels and smaller screens.':
+    'Conserve des libellés lisibles lors du redimensionnement du canevas, notamment sur les écrans muraux et les petits écrans.',
+  'When off, cards can sit flush with every canvas edge. When on, this adds the selected number of grid cells around the layout.':
+    'Désactivée, les cartes peuvent toucher les bords. Activée, cette option ajoute le nombre choisi de cellules autour de la disposition.',
+  'Pick the Home Assistant theme this dashboard should inherit from.': 'Choisissez le thème Home Assistant dont ce tableau de bord doit hériter.',
+  'Controls DDC toolbars, dialogs, and editing controls only. The dashboard theme is restored when edit mode closes.':
+    'Contrôle uniquement les barres d’outils, fenêtres et commandes d’édition. Le thème du tableau de bord revient à la fermeture du mode édition.',
+  'Optional: let the selected theme win over dashboard colors, card shadows, and per-card design overrides.':
+    'Facultatif : donne la priorité au thème sur les couleurs, les ombres et les personnalisations propres aux cartes.',
+  'Supports hex, rgba(), and Home Assistant theme variables.': 'Accepte les couleurs hex, rgba() et les variables de thème Home Assistant.',
+  'Extends the current background across the full Lovelace view, not just the card canvas.':
+    'Étend le fond actuel à toute la vue Lovelace, et pas seulement au canevas des cartes.',
+  'Sets the base surface behind every draggable card.': 'Définit la surface de base derrière chaque carte déplaçable.',
+  'Sets the dashboard default for every card. A card-specific overflow setting still takes priority.':
+    'Définit le comportement par défaut de toutes les cartes. Un réglage propre à une carte reste prioritaire.',
+  'Adds depth to card containers so they separate more clearly from the canvas.':
+    'Ajoute du relief aux cartes afin de mieux les détacher du canevas.',
+  'Controls how subtle or deep dashboard card shadows should feel.': 'Règle la discrétion ou la profondeur des ombres des cartes.',
+  'Choose the visual layer that sits behind your cards.': 'Choisissez la couche visuelle placée derrière les cartes.',
+  'Small uploads can be stored inline. For large media, host the file under /local/ and paste the URL.':
+    'Les petits fichiers peuvent être intégrés directement. Pour les médias volumineux, placez-les sous /local/ et collez leur URL.',
+  'Leave empty to use the built-in motion preset. For custom JSON, host it under /local/.':
+    'Laissez vide pour utiliser le mouvement intégré. Pour un JSON personnalisé, placez-le sous /local/.',
+  'Keep this off when dragging should always win over particle interaction.':
+    'Laissez désactivé pour que le déplacement des cartes reste prioritaire sur les particules.',
+  'Video stays behind your cards, starts muted, and ignores pointer events so dragging remains smooth.':
+    'La vidéo reste derrière les cartes, démarre sans son et ignore le pointeur afin de préserver la fluidité.',
+  'Adds polished transitions when cards move or resize.': 'Ajoute des transitions fluides lors du déplacement ou redimensionnement des cartes.',
+  'Shows a short initial loading reveal when the dashboard page opens.': 'Affiche une courte animation de chargement à l’ouverture du tableau de bord.',
+  'Saves drag, resize, and edit changes automatically.': 'Enregistre automatiquement les déplacements, redimensionnements et modifications.',
+  'How long to wait after the last change before saving. Lower values save more often.':
+    'Délai après la dernière modification avant l’enregistrement. Une valeur basse enregistre plus souvent.',
+  'Writes extra layout diagnostics to the browser console.': 'Écrit des informations de diagnostic supplémentaires dans la console du navigateur.',
+  'Require this code before Edit Mode opens. Leave blank for no lock.': 'Demande ce code avant l’ouverture du mode édition. Laissez vide pour ne pas verrouiller.',
+  'Hides the top app bar during normal use. It returns automatically in Edit Mode.':
+    'Masque la barre supérieure en utilisation normale. Elle réapparaît automatiquement en mode édition.',
+  'Hides the left navigation drawer so the dashboard gets more room.': 'Masque le menu latéral gauche afin de laisser plus de place au tableau de bord.',
+  'Shows a full-screen idle overlay with time, date, and optional status entities.':
+    'Affiche une surcouche plein écran avec l’heure, la date et des entités d’état facultatives.',
+  'Minutes of inactivity before the screen saver appears.': 'Nombre de minutes d’inactivité avant l’apparition de l’économiseur.',
+  'Choose the full-screen idle experience. Each preview is rendered from the actual design preset.':
+    'Choisissez l’affichage plein écran au repos. Chaque aperçu utilise réellement le style correspondant.',
+  'Optional image that replaces the selected preset background while keeping the same screen saver layout.':
+    'Image facultative remplaçant le fond du style sélectionné tout en conservant sa disposition.',
+  'Only selected Home Assistant entities appear. Empty slots stay hidden.': 'Seules les entités Home Assistant sélectionnées apparaissent. Les emplacements vides restent masqués.',
+  'Controls where the regular tabs bar sits around the dashboard.': 'Définit la position de la barre d’onglets autour du tableau de bord.',
+  'Scales the tab controls while preserving touch-friendly sizing and viewport alignment.':
+    'Redimensionne les onglets tout en conservant une taille tactile et un alignement adaptés.',
+  'Use a short, unique name. Cards remember which tab they belong to.': 'Utilisez un nom court et unique. Les cartes mémorisent leur onglet.',
+  'When enabled, cards can belong to one or more layers and be shown or hidden from the layer bar.':
+    'Une fois activées, les cartes peuvent appartenir à plusieurs calques et être affichées ou masquées depuis leur barre.',
+  'Shows the Layers label and active count beside the icon. Off keeps the layer button compact.':
+    'Affiche le libellé Calques et le nombre actif près de l’icône. Désactivé, le bouton reste compact.',
+  'Layer IDs stay stable behind the scenes, so you can rename labels later without breaking assigned cards.':
+    'Les identifiants des calques restent stables : vous pouvez renommer leurs libellés sans perdre les cartes assignées.',
+  'Each entry becomes a package bundle. Use Custom YAML when the guided shortcuts do not cover what you need.':
+    'Chaque entrée devient un module. Utilisez YAML personnalisé lorsque les raccourcis proposés ne suffisent pas.',
+  'Small uploads can be stored inline. For large media, host the file under':
+    'Les petits fichiers peuvent être intégrés directement. Pour les médias volumineux, placez-les sous',
+  'and paste the URL.': 'et collez leur URL.',
+  'Leave empty to use the built-in motion preset. For custom JSON, host it under':
+    'Laissez vide pour utiliser le mouvement intégré. Pour un JSON personnalisé, placez-le sous',
+  'Each entry becomes a package bundle. Use': 'Chaque entrée devient un module. Utilisez',
+  'when the guided shortcuts do not cover what you need.': 'lorsque les raccourcis proposés ne suffisent pas.',
+  'is an upper limit in CSS pixels, not a target resolution. For example, 2560 uses the available browser width up to 2560 px; it does not force a 2560 px canvas.':
+    'est une limite supérieure en pixels CSS, pas une résolution cible. Par exemple, 2560 utilise la largeur disponible jusqu’à 2560 px sans imposer un canevas de cette taille.',
+  'sets how much the whole canvas may grow. For example, 1 means the canvas never grows beyond its original design size, while 1.2 allows 20% enlargement.':
+    'définit l’agrandissement maximal du canevas. Par exemple, 1 conserve sa taille d’origine et 1,2 autorise un agrandissement de 20 %.',
+  'keeps the previous unlimited behavior.': 'conserve le comportement précédent sans limite.',
   'Saved': 'Enregistré', 'Unsaved changes': 'Modifications non enregistrées',
   'Previous screen saver design': 'Économiseur précédent', 'Next screen saver design': 'Économiseur suivant',
   'Previous background': 'Fond précédent', 'Next background': 'Fond suivant',

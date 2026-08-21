@@ -1,0 +1,11 @@
+default_config:
+
+homeassistant:
+  name: Dynamic Dashboard Dev
+  unit_system: metric
+  time_zone: Europe/Paris
+
+logger:
+  default: info
+  logs:
+    custom_components.dynamic_drag_drop_dashboard: debug

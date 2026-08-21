@@ -23,7 +23,7 @@ export function collectDdcCardStorageLocations(lovelaceConfig = {}) {
   const visit = (value, viewIndex, path = [], seen = new Set()) => {
     if (!value || typeof value !== 'object' || seen.has(value)) return;
     seen.add(value);
-    if (String(value.type || '').toLowerCase() === 'custom:drag-and-drop-card') {
+    if (['custom:drag-and-drop-card', 'custom:dynamic-drag-drop-dashboard'].includes(String(value.type || '').toLowerCase())) {
       locations.push({ viewIndex, path: [...path], card: value });
       return;
     }
@@ -280,7 +280,7 @@ const persistenceMethods = {
 
     // Build what we want to merge (like Visual Editor does at top-level)
     const partial = {
-      type: "custom:drag-and-drop-card",
+      type: "custom:dynamic-drag-drop-dashboard",
       ...this._config,
       id,
       cards: this._cloneJson_(desktopCards),
@@ -399,7 +399,7 @@ const persistenceMethods = {
   _scanDdcCards(cfg) {
     const hits = []; // { view:number, path:string[], card:object }
     const push = (view, path, obj) => {
-      if (obj?.type === 'custom:drag-and-drop-card') hits.push({ view, path: [...path], card: obj });
+      if (['custom:drag-and-drop-card', 'custom:dynamic-drag-drop-dashboard'].includes(obj?.type)) hits.push({ view, path: [...path], card: obj });
     };
     const visit = (node, viewIdx, path) => {
       if (!node) return;
@@ -458,7 +458,7 @@ const persistenceMethods = {
       }
 
        // Build a patch for options ONLY - never stamp a global storage_key into multiple cards
-       const basePatch = { type: 'custom:drag-and-drop-card', ...opts };
+       const basePatch = { type: 'custom:dynamic-drag-drop-dashboard', ...opts };
        // Remove any incoming storage_key so it doesn't overwrite per-card keys accidentally
        if ('storage_key' in basePatch) delete basePatch.storage_key;
        if ('storageKey' in basePatch)  delete basePatch.storageKey;

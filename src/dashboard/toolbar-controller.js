@@ -434,7 +434,6 @@ _ensureStreamlinedToolbarObserver_() {
     const gSys = document.createElement('div'); gSys.className = 'ddc-t-group';
     gSys.append(
       this._mkBtn_('reload',    'mdi:refresh',             'Reload (R)', 'ghost'),          // ← make subtle
-      this._mkBtn_('open_hads', 'mdi:alpha-h-box-outline', 'Open HACS/HADS', 'ghost'),      // ← make subtle
       this._mkBtn_('apply',     'mdi:content-save',        'Apply / Save (S)', 'primary'),
       this._mkBtn_('exit_edit', 'mdi:logout-variant',      'Exit edit (Esc)', 'danger')
     );
@@ -503,12 +502,6 @@ _ensureStreamlinedToolbarObserver_() {
 
       case 'reload':
         this._reloadLayout_?.();
-        break;
-
-      case 'open_hads':
-        (this._openHACS_?.() ||
-         window.open('/hacs', '_blank') ||
-         window.open('/hacsfiles', '_blank'));
         break;
 
       case 'apply': {

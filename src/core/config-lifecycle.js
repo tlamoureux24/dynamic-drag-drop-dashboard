@@ -71,6 +71,7 @@ const setConfigMethods = {
       this.cardOverflow             = this._normalizeCardOverflow_(config.card_overflow);
       this._syncCardOverflow_?.();
       this.applyBackgroundToPage    = !!(config.apply_background_to_page ?? config.applyBackgroundToPage ?? false);
+      try { this._startDynamicBackgroundClock_?.(); } catch {}
       this.dashboardTheme           = String(config.dashboard_theme ?? config.theme_name ?? '').trim();
       this.dashboardThemeEnabled    = !!this.dashboardTheme || !!(config.dashboard_theme_enabled ?? config.theme_enabled ?? false);
       this.dashboardThemeOverrideAllDesign = !!(config.dashboard_theme_override_all_design ?? config.theme_override_all_design ?? false);
@@ -150,7 +151,7 @@ const setConfigMethods = {
       this.containerFixedHeight     = Number(config.container_fixed_height ?? 0) || null;
       this.containerPreset          = config.container_preset || 'fhd';
       this.containerPresetOrient    = config.container_preset_orientation || 'auto';
-      this.heroImage = config?.hero_image || "https://i.postimg.cc/j2bvd9Tc/Chat-GPT-Image-May-18-2026-02-33-38-PM.png";
+      this.heroImage = String(config?.hero_image || '').trim();
       // Tabs options
       this.tabs               = Array.isArray(config.tabs) ? config.tabs : [];
       {

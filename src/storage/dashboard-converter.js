@@ -526,7 +526,8 @@ const converterMethods = {
   },
 
   _dashboardConverterIsDdcCard_(card = {}) {
-    return String(card?.type || '').trim().toLowerCase() === 'custom:drag-and-drop-card';
+    return ['custom:drag-and-drop-card', 'custom:dynamic-drag-drop-dashboard']
+      .includes(String(card?.type || '').trim().toLowerCase());
   },
 
   _dashboardConverterIsStructuralCard_(card = {}) {
@@ -1505,7 +1506,7 @@ const converterMethods = {
 
   _dispatchDashboardConverterConfigChanged_() {
     const cfg = {
-      type: 'custom:drag-and-drop-card',
+      type: 'custom:dynamic-drag-drop-dashboard',
       ...(this._config || {}),
     };
     this._deleteParkedSidebarOptions_?.(cfg);

@@ -113,7 +113,7 @@ function createGetConfigElement(CardClass) {
     };
     // setConfig: populate input from incoming config
     editor.setConfig = (config = {}) => {
-      editor._config = sanitizeConfigForEditor({ type: config.type || 'custom:drag-and-drop-card', ...config });
+      editor._config = sanitizeConfigForEditor({ type: config.type || 'custom:dynamic-drag-drop-dashboard', ...config });
       // Auto-generate a storage key if not provided
       if (!editor._config.storage_key) {
         editor._config.storage_key = `layout_${(crypto?.randomUUID?.() || Date.now().toString(36))}`;
@@ -123,7 +123,7 @@ function createGetConfigElement(CardClass) {
     // getConfig: return updated configuration containing only the storage_key
     editor.getConfig = () => {
       const base = sanitizeConfigForEditor(editor._config || {});
-      base.type = 'custom:drag-and-drop-card';
+      base.type = 'custom:dynamic-drag-drop-dashboard';
       base.storage_key = text.value || '';
       delete base.cards;
       delete base.responsive_layouts;
@@ -198,7 +198,7 @@ function createGetConfigElement(CardClass) {
 
   // --- Public API: set incoming values (preserve unknown keys)
   el.setConfig = (config = {}) => {
-    el._config = { type: config.type || 'custom:drag-and-drop-card', ...config };
+    el._config = { type: config.type || 'custom:dynamic-drag-drop-dashboard', ...config };
     el._config.container_size_mode = CardClass.normalizeContainerSizeMode(el._config.container_size_mode);
     if (el._config.container_size_mode === 'auto') el._config.auto_resize_cards = true;
 

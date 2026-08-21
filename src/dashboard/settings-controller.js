@@ -60,6 +60,7 @@ const dashboardSettingsMethods = {
     // Append to our own shadow root so built-in .modal styles apply and centering works
     this.__settingsModal = modal;
     this.shadowRoot.appendChild(modal);
+    this._translateDashboardUi_?.(modal);
 
     const settingsTabs = Array.from(modal.querySelectorAll('[data-settings-tab]'));
     const settingsSections = Array.from(modal.querySelectorAll('[data-settings-section]'));
@@ -111,7 +112,7 @@ const dashboardSettingsMethods = {
     } catch {}
     activateSettingsTab(initialSettingsTab, { persist: false });
 
-    const wikiBaseUrl = 'https://hads.smarti.dev/wiki';
+    const wikiBaseUrl = 'https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/wiki';
     const wikiDoc = (slug, label) => ({ href: `${wikiBaseUrl}/${slug}`, label });
     const sectionDocsByKey = {
       layout: wikiDoc('layout', 'Wiki: Layout'),
@@ -198,6 +199,14 @@ const dashboardSettingsMethods = {
     const selBgAttachment = modal.querySelector('#ddc-bg-attachment');
     const rngBgOpacity    = modal.querySelector('#ddc-bg-opacity');
     const outBgOpacity    = modal.querySelector('#ddc-bg-opacity-out');
+    const chkHome24Dynamic = modal.querySelector('#ddc-home24-enabled');
+    const home24Settings = modal.querySelector('#ddc-home24-settings');
+    const inpHome24Weather = modal.querySelector('#ddc-home24-weather');
+    const inpHome24Sun = modal.querySelector('#ddc-home24-sun');
+    const inpHome24Sunrise = modal.querySelector('#ddc-home24-sunrise');
+    const inpHome24Sunset = modal.querySelector('#ddc-home24-sunset');
+    const inpHome24Base = modal.querySelector('#ddc-home24-base');
+    const inpHome24Fallback = modal.querySelector('#ddc-home24-fallback');
     const chkDebug   = modal.querySelector('#ddc-setting-debug');
 
     // Screen saver controls
@@ -219,9 +228,7 @@ const dashboardSettingsMethods = {
     const screenSaverEntityList = modal.querySelector('#ddc-screenSaverEntityList');
 
     const selBgMode           = modal.querySelector('#ddc-bg-mode');
-    const secImg              = modal.querySelector('[data-bg-section="image"]');
-    const secParticles        = modal.querySelector('[data-bg-section="particles"]');
-    const secYoutube          = modal.querySelector('[data-bg-section="youtube"]');
+    const backgroundSections = Array.from(modal.querySelectorAll('[data-bg-section]'));
     const inpParticlesUrl     = modal.querySelector('#ddc-particles-url');
     const chkParticlesPointer = modal.querySelector('#ddc-particles-pointer');
     const rngParticlesCount   = modal.querySelector('#ddc-particles-count');
@@ -282,6 +289,32 @@ const dashboardSettingsMethods = {
     const bgMode = (this._config?.background_mode)
       || (this._config?.background_image?.src ? 'image' : 'none');
     if (selBgMode) selBgMode.value = String(bgMode);
+    const dynamicBgCfg = this._config?.background_dynamic || {};
+    const configureEntityPicker = (picker, domains, value = '') => {
+      if (!picker) return;
+      picker.hass = this._hass;
+      picker.includeDomains = domains;
+      picker.allowCustomEntity = true;
+      picker.value = String(value || '');
+    };
+    const home24Enabled = !!dynamicBgCfg.enabled && dynamicBgCfg.preset === 'home24_scenes';
+    if (chkHome24Dynamic) chkHome24Dynamic.checked = home24Enabled;
+    configureEntityPicker(inpHome24Weather, ['weather'], dynamicBgCfg.weather_entity);
+    configureEntityPicker(inpHome24Sun, ['sun'], dynamicBgCfg.sun_entity || 'sun.sun');
+    configureEntityPicker(inpHome24Sunrise, ['input_datetime'], dynamicBgCfg.sunrise_entity);
+    configureEntityPicker(inpHome24Sunset, ['input_datetime'], dynamicBgCfg.sunset_entity);
+    if (inpHome24Base) inpHome24Base.value = String(dynamicBgCfg.base_url || '/local/home24/backgrounds/scenes');
+    if (inpHome24Fallback) inpHome24Fallback.value = String(dynamicBgCfg.fallback || '/local/home24/backgrounds/home24-day-v4.png');
+    const syncHome24Settings = () => {
+      if (home24Settings) home24Settings.style.display = chkHome24Dynamic?.checked ? '' : 'none';
+      if (chkHome24Dynamic?.checked && selBgMode) selBgMode.value = 'image';
+      const mode = selBgMode?.value || 'none';
+      backgroundSections.forEach((section) => {
+        section.style.display = section.dataset.bgSection === mode ? '' : 'none';
+      });
+    };
+    chkHome24Dynamic?.addEventListener('change', syncHome24Settings);
+    syncHome24Settings();
 
     const pCfg = this._config?.background_particles || {};
     const cloneData = (obj) => {
@@ -1334,9 +1367,9 @@ const dashboardSettingsMethods = {
     // show/hide sections based on mode
     const showBgSections = () => {
       const m = selBgMode?.value || 'none';
-      if (secImg)       secImg.style.display       = (m === 'image')     ? '' : 'none';
-      if (secParticles) secParticles.style.display = (m === 'particles') ? '' : 'none';
-      if (secYoutube)   secYoutube.style.display   = (m === 'youtube')   ? '' : 'none';
+      backgroundSections.forEach((section) => {
+        section.style.display = section.dataset.bgSection === m ? '' : 'none';
+      });
     };
     selBgMode?.addEventListener('change', showBgSections);
     showBgSections();
@@ -2769,6 +2802,7 @@ const dashboardSettingsMethods = {
       const newDebug     = !!chkDebug?.checked;
       const newEditPin  = (inpEditPin?.value || '').trim();
       const newBgMode = selBgMode?.value || 'none';
+      const newHome24Enabled = !!chkHome24Dynamic?.checked;
       const newParticlesUrl = (inpParticlesUrl?.value || '').trim();
       const newParticlesPtr = !!chkParticlesPointer?.checked;
       const newParticlesState = applyParticleControlsToConfig();
@@ -3045,6 +3079,22 @@ const dashboardSettingsMethods = {
         // ---- Background mode + dynamic configs ----
         this._config = this._config || {};
         this._config.background_mode = newBgMode;
+        if (newHome24Enabled) {
+          this._config.background_mode = 'image';
+          this._config.background_dynamic = {
+            enabled: true,
+            preset: 'home24_scenes',
+            weather_entity: String(inpHome24Weather?.value || '').trim(),
+            sun_entity: String(inpHome24Sun?.value || '').trim() || 'sun.sun',
+            sunrise_entity: String(inpHome24Sunrise?.value || '').trim(),
+            sunset_entity: String(inpHome24Sunset?.value || '').trim(),
+            base_url: String(inpHome24Base?.value || '').trim() || '/local/home24/backgrounds/scenes',
+            fallback: String(inpHome24Fallback?.value || '').trim() || '/local/home24/backgrounds/home24-day-v4.png',
+            transition_ms: 1200,
+          };
+        } else if (this._config.background_dynamic?.preset === 'home24_scenes') {
+          delete this._config.background_dynamic;
+        }
 
         // keep image settings only if mode is 'image' or you’ve set a src
         if (newBgMode !== 'image' && !newBgImg) {
@@ -3109,8 +3159,20 @@ const dashboardSettingsMethods = {
           const { background_image, ...rest } = this._config || {};
           this._config = rest;
         }
+        if (newHome24Enabled && !this._config.background_image?.src) {
+          this._config.background_image = {
+            ...prevBg,
+            src: String(inpHome24Fallback?.value || '').trim() || '/local/home24/backgrounds/home24-day-v4.png',
+            repeat: rep,
+            size: sz,
+            position: pos,
+            attachment: att,
+            opacity: op,
+          };
+        }
 
         // Apply immediately (preview)
+        this._startDynamicBackgroundClock_?.();
         this._applyBackgroundFromConfig?.();
 
         // Update underlying config so changes persist in YAML/storage

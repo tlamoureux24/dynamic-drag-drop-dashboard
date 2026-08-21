@@ -84,6 +84,9 @@ const dashboardApiMethods = {
       background_image: cfg.background_image
         ? pick(cfg.background_image, ['src','repeat','size','position','attachment','opacity'])
         : undefined,
+      background_dynamic: cfg.background_dynamic
+        ? this._cloneJson_(cfg.background_dynamic)
+        : undefined,
       background_particles: cfg.background_particles
         ? pick(cfg.background_particles, ['config_url','pointer_events','hover_mode','click_mode','interaction_distance','config'])
         : undefined,
@@ -114,7 +117,7 @@ const dashboardApiMethods = {
     // If storage_key changed, push it into HA editor immediately
      if (this._isInHaEditorPreview()) {
        try {
-         const updatedCfg = { type: 'custom:drag-and-drop-card', ...(this._config || {}) };
+         const updatedCfg = { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) };
          this.dispatchEvent(new CustomEvent('config-changed', {
            detail: { config: updatedCfg },
            bubbles: true,

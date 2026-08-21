@@ -370,7 +370,7 @@ const designImportExportMethods = {
       'hide_HA_Header','hide_HA_Sidebar',
   
       // Background modes
-      'background_mode','background_image','background_particles','background_youtube',
+      'background_mode','background_image','background_dynamic','background_particles','background_youtube',
   
       // Screen saver
       'screen_saver_enabled','screen_saver_delay','screen_saver_style','screen_saver_image','screensaver_image','screen_saver_background_image','screen_saver_entities',
@@ -488,7 +488,7 @@ const designImportExportMethods = {
           const imported = { ...runtimeImportedOptions };
   
           if (HARD_REPLACE) {
-            const cfg = this._config || { type: 'custom:drag-and-drop-card' };
+            const cfg = this._config || { type: 'custom:dynamic-drag-drop-dashboard' };
   
             // 1) remove stale option keys that aren't in the import
             for (const k of KNOWN_OPT_KEYS) {
@@ -654,7 +654,7 @@ const designImportExportMethods = {
   
           // SAFETY NET: push tabs into the live card config (so the UI editor/YAML reflects it immediately)
           try {
-            const cfg = { type: 'custom:drag-and-drop-card', ...(this._config || {}) };
+            const cfg = { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) };
             cfg.tabs = persistOptions.tabs;
             cfg.tabs_position = persistOptions.tabs_position;
             cfg.default_tab = persistOptions.default_tab;

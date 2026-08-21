@@ -1,5 +1,7 @@
 node_modules
 .DS_Store
+__pycache__/
+*.py[cod]
 examples/simple-media-player-card-1-0-0-fixed.json
 examples/ddc-card-washer-alert-icon-card.json
 examples/home-assistant-package-ddc-laundry-service-matrix.yaml

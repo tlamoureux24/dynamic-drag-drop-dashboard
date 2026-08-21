@@ -5,7 +5,7 @@
  * picker while preserving the published custom element tag.
  */
 
-const DDC_DASHBOARD_STRATEGY_TYPE = 'drag-and-drop-card';
+const DDC_DASHBOARD_STRATEGY_TYPE = 'dynamic-drag-drop-dashboard';
 const DDC_DASHBOARD_STRATEGY_TAG = `ll-strategy-dashboard-${DDC_DASHBOARD_STRATEGY_TYPE}`;
 
 function __ddcDashboardStrategySlug__(value, fallback = 'drag-drop') {
@@ -101,12 +101,12 @@ export function registerDragAndDropCard(DragAndDropCard, version) {
       ) ? config.card : {};
       const baseCard = DragAndDropCard.getStubConfig
         ? DragAndDropCard.getStubConfig(hass)
-        : { type: 'custom:drag-and-drop-card' };
+        : { type: 'custom:dynamic-drag-drop-dashboard' };
       const viewPath = __ddcDashboardStrategySlug__(config.view_path || config.viewPath || 'home', 'home');
       const cardConfig = {
         ...baseCard,
         ...cardOverrides,
-        type: 'custom:drag-and-drop-card',
+        type: 'custom:dynamic-drag-drop-dashboard',
         storage_key: String(cardOverrides.storage_key || cardOverrides.storageKey || storageKey),
       };
       delete cardConfig.storageKey;
@@ -130,7 +130,15 @@ export function registerDragAndDropCard(DragAndDropCard, version) {
     customElements.define(DDC_DASHBOARD_STRATEGY_TAG, DdcDashboardStrategy);
   }
 
-  customElements.define('drag-and-drop-card', DragAndDropCard);
+  if (!customElements.get('drag-and-drop-card')) {
+    customElements.define('drag-and-drop-card', DragAndDropCard);
+  }
+  if (!customElements.get('dynamic-drag-drop-dashboard')) {
+    customElements.define(
+      'dynamic-drag-drop-dashboard',
+      class DynamicDragDropDashboard extends DragAndDropCard {}
+    );
+  }
 
   /*
    * Register this card with Home Assistant's card picker. The HA dashboard
@@ -145,31 +153,30 @@ export function registerDragAndDropCard(DragAndDropCard, version) {
     }
     const exists = window.customCards.some((c) => {
       if (!c || typeof c.type !== 'string') return false;
-      return c.type.toLowerCase().replace(/^custom:/, '') === 'drag-and-drop-card';
+      return c.type.toLowerCase().replace(/^custom:/, '') === 'dynamic-drag-drop-dashboard';
     });
     const cardVersion = (typeof version !== 'undefined' && version) ? version : undefined;
     if (!exists) {
       window.customCards.push({
-        type: 'drag-and-drop-card',
-        name: 'Drag & Drop Card',
-        description: 'Flexible grid layout card with drag‑and‑drop editing.',
+        type: 'dynamic-drag-drop-dashboard',
+        name: 'Dynamic Drag & Drop Dashboard',
+        description: 'Build a locally stored, dynamic drag-and-drop dashboard.',
         preview: false,
         configurable: true,
-        documentationURL: 'https://hads.smarti.dev/d/drag-and-drop-card',
         version: cardVersion,
         icon: 'mdi:cursor-move'
       });
     } else {
       const current = window.customCards.find((c) => (
         c && typeof c.type === 'string'
-        && c.type.toLowerCase().replace(/^custom:/, '') === 'drag-and-drop-card'
+        && c.type.toLowerCase().replace(/^custom:/, '') === 'dynamic-drag-drop-dashboard'
       ));
       if (current) {
-        current.name = 'Drag & Drop Card';
-        current.description = 'Flexible grid layout card with drag‑and‑drop editing.';
+        current.name = 'Dynamic Drag & Drop Dashboard';
+        current.description = 'Build a locally stored, dynamic drag-and-drop dashboard.';
         current.preview = false;
         current.configurable = true;
-        current.documentationURL = 'https://hads.smarti.dev/d/drag-and-drop-card';
+        delete current.documentationURL;
         current.version = cardVersion;
         current.icon = 'mdi:cursor-move';
       }
@@ -195,9 +202,8 @@ export function registerDragAndDropCard(DragAndDropCard, version) {
     const descriptor = {
       type: DDC_DASHBOARD_STRATEGY_TYPE,
       strategyType: 'dashboard',
-      name: 'Drag & Drop Dashboard',
-      description: 'Start a full dashboard with a panel-sized Drag & Drop Card.',
-      documentationURL: 'https://hads.smarti.dev/d/drag-and-drop-card',
+      name: 'Dynamic Drag & Drop Dashboard',
+      description: 'Start a full dashboard with a panel-sized dynamic canvas.',
     };
     if (current) Object.assign(current, descriptor);
     else window.customStrategies.push(descriptor);

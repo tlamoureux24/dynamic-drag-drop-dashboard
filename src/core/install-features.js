@@ -50,6 +50,7 @@ import { installContainerSizingMethods } from '../layout/container-size.js';
 import { installCardDefinitionStatics } from '../cards/card-catalog.js';
 import { installConfigHelperMethods } from './config-normalization.js';
 import { installCoreMethods } from './element-api.js';
+import { installLocalizationMethods } from '../localization/i18n.js';
 
 export function installDragAndDropCardFeatures(CardClass, version) {
   // Class-level APIs must be installed first because Home Assistant can call
@@ -61,6 +62,7 @@ export function installDragAndDropCardFeatures(CardClass, version) {
   // Instance-level helpers are layered from low-level primitives to UI features.
   // Later modules can safely call methods installed by earlier modules.
   installCoreMethods(CardClass.prototype);
+  installLocalizationMethods(CardClass.prototype);
   installContainerSizingMethods(CardClass.prototype);
   installScaleManagerMethods(CardClass.prototype);
   installTextResizeLockMethods(CardClass.prototype);

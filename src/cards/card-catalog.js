@@ -63,7 +63,7 @@ function getStubConfig(/* hass, entities, entitiesFallback */) {
     // particles background.  The storage_key is generated once so each new
     // card has its own persistent layout key.
     return {
-      type: 'custom:drag-and-drop-card',
+      type: 'custom:dynamic-drag-drop-dashboard',
       storage_key: this._genKey(),
       grid: 20,
       drag_live_snap: true,
@@ -130,13 +130,13 @@ export function installCardDefinitionStatics(CardClass) {
             // prefix).  Returning the tag here makes it consistent with the
             // registration below and prevents mismatches when the card is added
             // through the visual editor.
-            return 'drag-and-drop-card';
+            return 'dynamic-drag-drop-dashboard';
       },
     },
     title: {
       configurable: true,
       get() {
-        return 'Drag & Drop Card';
+        return 'Dynamic Drag & Drop Dashboard';
       },
     },
     description: {

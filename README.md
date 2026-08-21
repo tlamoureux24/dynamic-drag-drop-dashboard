@@ -1,33 +1,39 @@
 <div align="center">
 
-<h1>Drag &amp; Drop Card for Home Assistant</h1>
+<h1>Dynamic Drag &amp; Drop Dashboard for Home Assistant</h1>
 
-<p><strong>Build responsive Home Assistant dashboards visually — drag, resize, layer, and arrange Lovelace cards exactly where you want them.</strong></p>
+<p><strong>One Home Assistant integration for visual dashboards, local persistence, and dynamic backgrounds.</strong></p>
 
 <p>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Prosono/Drag-And-Drop-Card?display_name=tag&amp;sort=semver&amp;style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tlamoureux24/dynamic-drag-drop-dashboard?display_name=tag&amp;sort=semver&amp;style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
 </p>
 
 <p>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
   <a href="#installation"><img alt="HACS custom repository" src="https://img.shields.io/badge/HACS-Custom-41BDF5?style=for-the-badge&amp;logo=homeassistant&amp;logoColor=white"></a>
   <a href="hacs.json"><img alt="Home Assistant 2025.8 or newer" src="https://img.shields.io/badge/Home_Assistant-2025.8%2B-41BDF5?style=for-the-badge&amp;logo=homeassistant&amp;logoColor=white"></a>
 </p>
 
 <p>
-  <a href="https://hads.smarti.dev/wiki/start-here"><strong>Start guide</strong></a>
+  <a href="#quick-start"><strong>Start guide</strong></a>
   · <a href="#installation">Installation</a>
   · <a href="#configuration-options">Configuration</a>
-  · <a href="https://hads.smarti.dev/">HADS</a>
-  · <a href="https://github.com/Prosono/Drag-And-Drop-Card/releases">Releases</a>
+  · <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/releases">Releases</a>
 </p>
 
 </div>
+
+> **Fork status:** this project is being converted from Prosono's
+> Drag-And-Drop-Card and Drag-And-Drop-Card-Backend into one HACS integration.
+> The current `0.1.0` foundation bundles the frontend and local persistence.
+> The marketplace, account, and purchase features have been removed. Dynamic
+> weather and sunrise/sunset-relative Home24 backgrounds are included. See
+> [UPSTREAM.md](UPSTREAM.md) for attribution and tracking.
 
 <p align="center">
   <img src="assets/demo.gif" alt="Drag & Drop Card dashboard editor demo" width="100%">
@@ -35,7 +41,7 @@
 
 Drag & Drop Card is a freeform canvas for the Home Assistant Lovelace UI. Arrange any compatible card visually, create responsive layouts for different devices, save or share complete designs, and turn a dashboard into a polished full-screen experience.
 
-> **New here?** Follow the illustrated [HADS start guide](https://hads.smarti.dev/wiki/start-here) for the fastest path from installation to your first dashboard. This README is the detailed reference for configuration and advanced features.
+> **New here?** Install the integration from HACS, add it under Devices & Services, then create a Dynamic Drag & Drop Dashboard card.
 
 ## 📑 Contents
 
@@ -64,7 +70,7 @@ Drag & Drop Card is a freeform canvas for the Home Assistant Lovelace UI. Arrang
 - **Portable designs:** export and import complete JSON layouts, individual cards, options, responsive variants, and Home Assistant packages.
 - **Rich presentation:** use images, particles, YouTube backgrounds, animated connectors, card entrance animations, and an optional screen saver.
 - **Home Assistant integration:** add the card through the native card picker or register it as a discoverable community dashboard on supported Home Assistant versions.
-- **Design ecosystem:** browse and import community designs from HADS and style the outer card with `card-mod`.
+- **Local-first:** no marketplace, account, purchase, or external catalog dependency.
 - **Self-contained bundle:** `interactjs` and `js-yaml` are bundled; no runtime CDN is required.
 
 ---
@@ -76,22 +82,19 @@ Drag & Drop Card is a freeform canvas for the Home Assistant Lovelace UI. Arrang
 ### Option A: HACS (recommended)
 
 1. In HACS, open the menu and choose **Custom repositories**.
-2. Add `https://github.com/Prosono/Drag-And-Drop-Card` with **Dashboard** as the category.
-3. Search for **Drag & Drop Card**, open it, and select **Download**.
-4. Reload Home Assistant and hard-refresh the browser if the card does not appear immediately.
+2. Add `https://github.com/tlamoureux24/dynamic-drag-drop-dashboard` with **Integration** as the category.
+3. Search for **Dynamic Drag & Drop Dashboard** and select **Download**. Published versions are distributed as the release archive `dynamic_drag_drop_dashboard.zip`.
+4. Restart Home Assistant.
+5. Open **Settings → Devices & services → Add integration**, then add **Dynamic Drag & Drop Dashboard**.
+6. Hard-refresh the browser if the card does not appear immediately.
 
 The card is now available in Home Assistant's native card picker. On Home Assistant 2026.5 or newer, it also appears under **Settings → Dashboards → Add dashboard → Community dashboards** as **Drag & Drop Dashboard**.
 
 ### Option B: Manual
 
-1. Download the compiled [`dist/drag-and-drop-card.js`](dist/drag-and-drop-card.js) file.
-2. Copy it to `/config/www/drag-and-drop-card.js`.
-3. Add it under **Settings → Dashboards → Resources**, or add the Lovelace resource in YAML:
-
-```yaml
-url: /local/drag-and-drop-card.js
-type: module
-```
+1. Copy `custom_components/dynamic_drag_drop_dashboard` into the Home Assistant `custom_components` directory.
+2. Restart Home Assistant.
+3. Add **Dynamic Drag & Drop Dashboard** from **Settings → Devices & services**.
 
 > After adding a new resource, **clear browser cache** or hard-reload to ensure the module loads.
 
@@ -101,9 +104,7 @@ type: module
 
 ## 🔁 Persistence backend
 
-> **Recommended:** Install the [Drag & Drop Card Backend](https://github.com/Prosono/Drag-And-Drop-Card-Backend) to keep editor changes in Home Assistant, make layouts available across browsers and devices, and sync optional packages.
-
-Without the backend, the card falls back to browser `localStorage`. That is useful for testing, but the layout remains tied to that browser profile and can be lost when site data is cleared.
+The persistence backend and frontend module are included in the same integration. Layouts are stored in Home Assistant and remain available across browsers and devices. The historical browser `localStorage` fallback remains available only for recovery and compatibility.
 
 ---
 
@@ -111,10 +112,10 @@ Without the backend, the card falls back to browser `localStorage`. That is usef
 
 ## 🚀 Quick Start
 
-Add a **Drag & Drop Card** to your dashboard using YAML:
+Add a **Dynamic Drag & Drop Dashboard** card using YAML:
 
 ```yaml
-type: custom:drag-and-drop-card
+type: custom:dynamic-drag-drop-dashboard
 storage_key: livingroom_layout         # unique key per canvas
 grid: 20                               # pixel grid size (default editor stub)
 drag_live_snap: true                   # snap while dragging/resizing
@@ -314,11 +315,10 @@ Below is a summary of the main configuration options. Many have reasonable defau
 
 Use the **Add** button in edit mode to pick from standard Lovelace cards or drag across an area to add a card directly to the grid.
 
-The picker offers three ways to start:
+The picker offers two ways to start:
 
 - **Cards** — choose the exact Home Assistant or Drag & Drop Card type.
-- **By entity** — search for an entity, then choose from every compatible starting card. The domain-aware recommendation appears first, while alternatives such as Tile, Button, Entity, Glance, graphs, and DDC Icon remain available when supported. Installed custom cards are detected from Home Assistant's card registry and included when they safely match the selected domain, including Mushroom, Bubble Card, Button Card, Mini Graph Card, and other recognized cards. Compatible owned or free single-card designs from HADS are included too; selecting one downloads it, replaces its original entity with your selection, and opens the normal editor before it is added.
-- **HADS** — browse cards and dashboard packages from the Home Assistant Dashboard Store.
+- **By entity** — search for an entity, then choose from compatible native cards and custom cards already installed in Home Assistant. The domain-aware recommendation appears first, with alternatives such as Tile, Button, Entity, Glance, graphs, Mushroom, Bubble Card, Button Card, and Mini Graph Card when available.
 
 The selected card remains fully editable through the visual and YAML editors before it is added.
 
@@ -1009,17 +1009,69 @@ card_mod:
 
 ---
 
-## HADS – Home Assistant Dashboard Store
+<a id="troubleshooting"></a>
 
-This card can browse and import community dashboard designs from [HADS](https://hads.smarti.dev/). Start with the [HADS walkthrough](https://hads.smarti.dev/wiki/start-here) if you want a guided setup.
+## Dynamic weather and time backgrounds
 
-For the deeper in-card marketplace integration, see the proposed HADS API contract:
+The dashboard can select a local image from the state of a Home Assistant weather entity and the
+current local time. Put images in Home Assistant's `www` directory and reference them as `/local/...`.
 
-> [`docs/hads-ddc-integration-api.md`](docs/hads-ddc-integration-api.md)
+```yaml
+type: custom:dynamic-drag-drop-dashboard
+background_mode: image
+background_image:
+  size: cover
+  position: center center
+  opacity: 1
+background_dynamic:
+  enabled: true
+  weather_entity: weather.home
+  fallback: /local/dashboard/default.webp
+  time_slots:
+    - { id: morning, start: "06:00", end: "10:00" }
+    - { id: day, start: "10:00", end: "18:00" }
+    - { id: evening, start: "18:00", end: "22:00" }
+    - { id: night, start: "22:00", end: "06:00" }
+  images:
+    clear:
+      morning: /local/dashboard/clear-morning.webp
+      day: /local/dashboard/clear-day.webp
+      evening: /local/dashboard/clear-evening.webp
+      night: /local/dashboard/clear-night.webp
+    rain:
+      day: /local/dashboard/rain-day.webp
+      default: /local/dashboard/rain.webp
+    default:
+      default: /local/dashboard/default.webp
+```
+
+Built-in groups cover clear, cloudy, rain, snow, fog, and wind conditions. Add or override groups
+with `weather_groups`, for example `storm: [lightning, lightning-rainy]`. Overnight slots are
+supported, and changes are applied when Home Assistant updates the entity or the time crosses a slot.
+
+For the Home24 40-scene collection, the native preset keeps its sunrise/sunset-relative phases and
+special storm, fog, and snow rules:
+
+```yaml
+background_mode: image
+background_image:
+  src: /local/home24/backgrounds/home24-day-v4.png
+  size: cover
+  position: center center
+background_dynamic:
+  enabled: true
+  preset: home24_scenes
+  weather_entity: weather.meteo_france_forecast_for_city_saint_medard_de_mussidan_aquitaine_24_fr_saint_medard_de_mussidan
+  sunrise_entity: input_datetime.home24_sunrise_today
+  sunset_entity: input_datetime.home24_sunset_today
+  base_url: /local/home24/backgrounds/scenes
+  fallback: /local/home24/backgrounds/home24-day-v4.png
+```
+
+When the optional `input_datetime` helpers do not exist, the preset automatically derives the phase
+from Home Assistant's built-in `sun.sun` entity.
 
 ---
-
-<a id="troubleshooting"></a>
 
 ## 🛠 Troubleshooting
 
@@ -1051,7 +1103,7 @@ For another hands-on preview, [open the extended demo GIF](assets/demo2.gif) (24
 
 Issues, feature proposals, documentation improvements, and pull requests are welcome.
 
-1. Check the [open issues](https://github.com/Prosono/Drag-And-Drop-Card/issues) before starting larger changes.
+1. Check the [open issues](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues) before starting larger changes.
 2. Fork the repository and create a focused branch.
 3. Install dependencies, run the tests, and build the production bundle:
 
@@ -1070,15 +1122,9 @@ Please keep the project self-contained: runtime dependencies must be bundled, no
 
 <a id="support-the-project"></a>
 
-## ☕ Support the project
+## Support the project
 
-If Drag & Drop Card saves you time, you can support the project by [starring the repository](https://github.com/Prosono/Drag-And-Drop-Card), sharing your dashboards, reporting useful feedback, or buying me a coffee.
-
-<p align="center">
-  <a href="https://buymeacoffee.com/prosono">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" width="217" height="60">
-  </a>
-</p>
+You can help by testing releases, reporting reproducible issues, and sharing improvements. The original upstream projects and their authors remain credited in [UPSTREAM.md](UPSTREAM.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ---
 
@@ -1092,7 +1138,7 @@ Third-party licenses and bundled dependency notices are documented in [`THIRD_PA
 
 ## 🧾 Release Notes
 
-See [GitHub Releases](https://github.com/Prosono/Drag-And-Drop-Card/releases) for version history, highlights, and upgrade notes. The installed bundle also logs its version in the browser console:
+See [GitHub Releases](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/releases) for version history, highlights, and upgrade notes. The installed bundle also logs its version in the browser console:
 
 ```text
 drag-and-drop-card vX.Y.Z
@@ -1102,6 +1148,6 @@ drag-and-drop-card vX.Y.Z
 
 ## ⚠️ Known limitations
 
-Known issues are tracked in the [GitHub issue tracker](https://github.com/Prosono/Drag-And-Drop-Card/issues). One current limitation is worth highlighting:
+Known issues are tracked in the [GitHub issue tracker](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues). One current limitation is worth highlighting:
 
 - `card-mod` support **inside nested cards** is still limited and may not behave as expected. The outer Drag & Drop Card supports `card_mod` directly.

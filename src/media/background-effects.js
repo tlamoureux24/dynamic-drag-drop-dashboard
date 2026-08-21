@@ -5,8 +5,77 @@
  * rendering so effects can be created, refreshed, or destroyed safely.
  */
 
+import { resolveDynamicBackground } from './dynamic-background.js';
+
 /* Background image, page background, particles, and YouTube helpers. */
 const backgroundEffectsMethods = {
+  _resolveDynamicBackground_(date = new Date()) {
+    return resolveDynamicBackground(this._config?.background_dynamic, this._hass, date);
+  },
+
+  _getEffectiveBackgroundImage_() {
+    const dynamic = this._config?.background_dynamic?.enabled ? this.__dynamicBackgroundActive : null;
+    if (!dynamic?.src) return this._config?.background_image || this._config?.bg_image || null;
+    return { ...(this._config?.background_image || {}), src: dynamic.src };
+  },
+
+  _refreshDynamicBackground_() {
+    const dynamic = this._resolveDynamicBackground_?.();
+    const signature = dynamic ? `${dynamic.entity}|${dynamic.condition}|${dynamic.time}|${dynamic.src}` : '';
+    if (signature === this.__dynamicBackgroundSignature) return;
+    this.__dynamicBackgroundSignature = signature;
+    if (!this.isConnected) return;
+    if (!dynamic?.src) {
+      this.__dynamicBackgroundActive = null;
+      this._applyBackgroundFromConfig?.();
+      return;
+    }
+    const commit = (resolved) => {
+      if (this.__dynamicBackgroundSignature !== signature) return;
+      const cont = this.cardContainer;
+      const transitionMs = Math.max(0, Math.min(10000, Number(this._config?.background_dynamic?.transition_ms ?? 1200)));
+      if (cont && transitionMs > 0 && this.__dynamicBackgroundActive?.src) {
+        cont.style.setProperty('--ddc-bg-transition-duration', `${Math.round(transitionMs / 2)}ms`);
+        cont.classList.add('ddc-bg-transitioning');
+        setTimeout(() => {
+          if (this.__dynamicBackgroundSignature !== signature) return;
+          this.__dynamicBackgroundActive = resolved;
+          this._applyBackgroundFromConfig?.();
+          requestAnimationFrame(() => cont.classList.remove('ddc-bg-transitioning'));
+        }, Math.round(transitionMs / 2));
+      } else {
+        this.__dynamicBackgroundActive = resolved;
+        this._applyBackgroundFromConfig?.();
+      }
+    };
+    if (typeof globalThis.Image !== 'function') {
+      commit(dynamic);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => commit(dynamic);
+    image.onerror = () => {
+      const fallback = String(this._config?.background_dynamic?.fallback || '').trim();
+      if (fallback && fallback !== dynamic.src) commit({ ...dynamic, src: fallback, key: 'fallback' });
+    };
+    image.src = dynamic.src;
+  },
+
+  _startDynamicBackgroundClock_() {
+    this._stopDynamicBackgroundClock_?.();
+    if (!this.isConnected || !this._config?.background_dynamic?.enabled) return;
+    const tick = () => {
+      this._refreshDynamicBackground_?.();
+      this.__dynamicBackgroundTimer = setTimeout(tick, 60000 - (Date.now() % 60000) + 25);
+    };
+    tick();
+  },
+
+  _stopDynamicBackgroundClock_() {
+    if (this.__dynamicBackgroundTimer) clearTimeout(this.__dynamicBackgroundTimer);
+    this.__dynamicBackgroundTimer = 0;
+    this.__dynamicBackgroundSignature = '';
+  },
   _isCanvasFillBackgroundFreezeCandidate_() {
     try {
       const mode = this._getDashboardBackgroundMode_?.() || 'none';
@@ -107,6 +176,7 @@ const backgroundEffectsMethods = {
   _getDashboardBackgroundMode_() {
     try {
       const cfg = this._config || {};
+      if (this._resolveDynamicBackground_?.()?.src) return 'image';
       const explicit = String(cfg.background_mode || '').trim().toLowerCase();
       if (explicit) return explicit;
       return cfg.background_image?.src ? 'image' : 'none';
@@ -121,17 +191,14 @@ const backgroundEffectsMethods = {
   },
 
   _applyBackgroundImageFromConfig() {
-  // iOS safety: skip applying huge data URLs that can crash WKWebView
-  try {
-    const ua = navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    if (isIOS && bg && typeof bg.src === 'string' && bg.src.startsWith('data:') && bg.src.length > 300000) {
-      console.warn('[drag-and-drop-card] Skipping large inline background on iOS for stability.');
-      return;
-    }
-  } catch (_) {}
     const cfg = this._config || {};
-    const bg = cfg.background_image || cfg.bg_image || null;
+    const bg = this._getEffectiveBackgroundImage_?.() || cfg.background_image || cfg.bg_image || null;
+    // iOS safety: skip applying huge data URLs that can crash WKWebView
+    try {
+      const ua = navigator.userAgent || '';
+      const isIOS = /iPad|iPhone|iPod/.test(ua);
+      if (isIOS && typeof bg?.src === 'string' && bg.src.startsWith('data:') && bg.src.length > 300000) return;
+    } catch (_) {}
     const cont = this.cardContainer;
     if (!cont) return;
     const mode = this._getDashboardBackgroundMode_?.() || 'none';

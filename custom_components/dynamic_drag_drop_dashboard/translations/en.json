@@ -1,0 +1,14 @@
+{
+  "title": "Dynamic Drag & Drop Dashboard",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dynamic Drag & Drop Dashboard",
+        "description": "Install the dashboard frontend and its local Home Assistant storage."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Dynamic Drag & Drop Dashboard is already configured."
+    }
+  }
+}

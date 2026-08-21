@@ -1,6 +1,7 @@
 {
-  "name": "Drag & Drop Card",
+  "name": "Dynamic Drag & Drop Dashboard",
   "render_readme": true,
-  "filename": "drag-and-drop-card.js",
-  "homeassistant": "2025.8.0"
+  "homeassistant": "2025.8.0",
+  "zip_release": true,
+  "filename": "dynamic_drag_drop_dashboard.zip"
 }

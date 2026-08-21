@@ -186,6 +186,8 @@ test('the empty-state renders onboarding copy through the dashboard translator',
   assert.match(emptyStateSource, /const t = \(value\) => this\._dashboardText_/);
   assert.match(emptyStateSource, /\$\{t\('Build your first dashboard\.'\)\}/);
   assert.match(emptyStateSource, /\$\{t\('Double-click empty space to enter Edit Mode\.'\)\}/);
+  assert.match(emptyStateSource, /README\.fr\.md#démarrage-rapide/);
+  assert.match(emptyStateSource, /_dashboardLanguage_\?\.\(\) === 'fr'/);
 });
 
 test('the import review renders every conversion warning', () => {

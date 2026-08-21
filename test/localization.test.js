@@ -17,6 +17,11 @@ test('common dashboard controls have French translations', () => {
     translateDashboardText('Double-click empty space to enter Edit Mode.', 'fr'),
     'Double-cliquez sur un espace vide pour passer en mode édition.'
   );
+  assert.equal(translateDashboardText('Add a card', 'fr'), 'Ajouter une carte');
+  assert.equal(translateDashboardText('Search compatible cards...', 'fr'), 'Rechercher des cartes compatibles…');
+  assert.equal(translateDashboardText('2 compatible', 'fr'), '2 compatibles');
+  assert.equal(translateDashboardText('1 matching entity', 'fr'), '1 entité correspondante');
+  assert.equal(translateDashboardText('42 available', 'fr'), '42 disponibles');
   assert.equal(translateDashboardText('Unknown future label', 'fr'), 'Unknown future label');
   assert.equal(translateDashboardText('Dashboard Settings', 'en'), 'Dashboard Settings');
 });

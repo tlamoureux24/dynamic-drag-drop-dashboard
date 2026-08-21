@@ -21,7 +21,9 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Package Home Assistant integration
-        run: zip -r dynamic_drag_drop_dashboard.zip custom_components/dynamic_drag_drop_dashboard
+        run: |
+          cd custom_components/dynamic_drag_drop_dashboard
+          zip -r ../../dynamic_drag_drop_dashboard.zip . -x '*.pyc' '__pycache__/*'
       - uses: softprops/action-gh-release@v2
         with:
           files: dynamic_drag_drop_dashboard.zip

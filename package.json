@@ -1,6 +1,6 @@
 {
   "name": "dynamic-drag-drop-dashboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A unified Home Assistant integration for building dynamic drag-and-drop dashboards.",
   "type": "module",
   "license": "MIT",
@@ -27,13 +27,13 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Prosono/Drag-And-Drop-Card.git"
+    "url": "git+https://github.com/tlamoureux24/dynamic-drag-drop-dashboard.git"
   },
   "keywords": [],
   "author": "",
   "bugs": {
-    "url": "https://github.com/Prosono/Drag-And-Drop-Card/issues"
+    "url": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues"
   },
-  "homepage": "https://github.com/Prosono/Drag-And-Drop-Card#readme"
+  "homepage": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard#readme"
   
 }

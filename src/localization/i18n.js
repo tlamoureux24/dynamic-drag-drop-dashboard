@@ -194,12 +194,53 @@ const FR = Object.freeze({
   'sets how much the whole canvas may grow. For example, 1 means the canvas never grows beyond its original design size, while 1.2 allows 20% enlargement.':
     'définit l’agrandissement maximal du canevas. Par exemple, 1 conserve sa taille d’origine et 1,2 autorise un agrandissement de 20 %.',
   'keeps the previous unlimited behavior.': 'conserve le comportement précédent sans limite.',
+  'Preset size': 'Taille prédéfinie', 'Orientation': 'Orientation', 'Unlimited': 'Illimité',
+  'Stored, but only used while the container size mode is Auto.':
+    'Enregistré, mais utilisé uniquement lorsque le mode de taille du conteneur est Automatique.',
+  'Keeps text at its design size when the Auto canvas scale changes.':
+    'Conserve la taille de texte prévue lorsque l’échelle automatique du canevas change.',
+  'Landscape': 'Paysage', 'Portrait': 'Portrait',
+  'No themes found': 'Aucun thème trouvé', 'No themes were found from Home Assistant.': 'Aucun thème trouvé dans Home Assistant.',
+  'Select a dashboard theme before override mode can take control.':
+    'Sélectionnez d’abord un thème pour pouvoir lui donner la priorité.',
+  'Layers are off. Turn them on to create visibility groups for modes, rooms, or temporary states.':
+    'Les calques sont désactivés. Activez-les pour créer des groupes de visibilité par mode, pièce ou état temporaire.',
+  'VisionOS Glass': 'Verre VisionOS', 'Minimal Scandi': 'Scandinave minimal', 'Cinematic Dashboard': 'Tableau de bord cinématique',
+  'Layered glass, date card and calm Home status.': 'Verre superposé, carte de date et état paisible de la maison.',
+  'Quiet horizon, large clock and a slim status rail.': 'Horizon paisible, grande horloge et fine barre d’état.',
+  'Warm scene, greeting text and dashboard tiles.': 'Scène chaleureuse, message d’accueil et tuiles du tableau de bord.',
+  'Friday, May 15': 'Vendredi 15 mai', '1. VisionOS Glass': '1. Verre VisionOS',
+  '2. Minimal Scandi': '2. Scandinave minimal', '3. Cinematic Dashboard': '3. Tableau de bord cinématique',
+  'Sci-Fi HUD': 'Interface science-fiction', 'Dynamic Ambient': 'Ambiance dynamique',
+  'Floating Islands': 'Îlots flottants', 'Ultra Minimal Dot UI': 'Interface à points ultra-minimale',
+  'Home Intelligence': 'Maison intelligente', 'Planetary Orbital': 'Orbite planétaire',
+  'Animated rings, calendar grid and technical dock.': 'Anneaux animés, grille de calendrier et barre technique.',
+  'Soft landscape colors with a centered glass rail.': 'Couleurs douces de paysage avec une barre vitrée centrée.',
+  'Time and widgets float in separate glass islands.': 'L’heure et les widgets flottent dans des îlots vitrés distincts.',
+  'Sparse clock with colored dot status list.': 'Horloge épurée avec une liste d’états à points colorés.',
+  'Readable home summary with calendar and insights.': 'Résumé lisible de la maison avec calendrier et informations utiles.',
+  'Planet-centered layout with orbiting status capsules.': 'Disposition centrée sur une planète avec des états en orbite.',
+  '4. Sci-Fi HUD': '4. Interface science-fiction', '5. Dynamic Ambient': '5. Ambiance dynamique',
+  '6. Floating Islands': '6. Îlots flottants', '7. Ultra Minimal Dot UI': '7. Interface à points ultra-minimale',
+  '8. Home Intelligence': '8. Maison intelligente', '9. Planetary Orbital': '9. Orbite planétaire',
+  'Alarm': 'Alarme', 'Weather': 'Météo', 'Energy': 'Énergie', 'Entity': 'Entité',
+  'Display label (optional)': 'Libellé affiché (facultatif)',
+  'Alarm, lock, person, presence, or house mode entity.': 'Entité d’alarme, serrure, personne, présence ou mode de la maison.',
+  'Weather, outdoor temperature, or any outside sensor.': 'Entité météo, température extérieure ou autre capteur extérieur.',
+  'Power, energy, price, battery, or utility sensor.': 'Capteur de puissance, énergie, tarif, batterie ou service public.',
+  'https://example.com/image.jpg or upload a file': 'https://exemple.fr/image.jpg ou téléversez un fichier',
+  'Reload Home Assistant after changing packages so new helpers, scripts, automations, and package-based entities are picked up.':
+    'Redémarrez Home Assistant après avoir modifié les modules afin de charger les nouveaux helpers, scripts, automatisations et entités.',
+  'Run package sync diagnostics to check backend support, package directory access, and detected files.':
+    'Lancez le diagnostic de synchronisation pour vérifier le backend, l’accès au dossier des modules et les fichiers détectés.',
+  'No package features yet. Use the shortcuts above to add helpers, automations, scripts, template sensors, or custom YAML.':
+    'Aucun module pour le moment. Utilisez les raccourcis ci-dessus pour ajouter des helpers, automatisations, scripts, capteurs template ou du YAML personnalisé.',
   'Saved': 'Enregistré', 'Unsaved changes': 'Modifications non enregistrées',
   'Previous screen saver design': 'Économiseur précédent', 'Next screen saver design': 'Économiseur suivant',
   'Previous background': 'Fond précédent', 'Next background': 'Fond suivant',
 });
 
-const ATTRIBUTES = ['aria-label', 'title', 'data-tooltip', 'placeholder'];
+const ATTRIBUTES = ['aria-label', 'title', 'data-tooltip', 'placeholder', 'label'];
 
 export function resolveDashboardLanguage(hass) {
   const language = String(hass?.locale?.language || hass?.language || globalThis.navigator?.language || 'en').toLowerCase();

@@ -217,6 +217,24 @@ const emptyStateMethods = {
       img.alt = "";
       img.loading = 'lazy';
       visual.appendChild(img);
+    } else {
+      visual.innerHTML = `
+        <svg class="ddc-empty-brand" viewBox="0 0 640 760" role="img" aria-label="Dynamic Drag and Drop Dashboard">
+          <defs>
+            <linearGradient id="ddc-brand-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071522"/><stop offset="1" stop-color="#111827"/></linearGradient>
+            <linearGradient id="ddc-brand-accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#42e8ff"/><stop offset="1" stop-color="#168cff"/></linearGradient>
+            <filter id="ddc-brand-glow"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <rect width="640" height="760" rx="44" fill="url(#ddc-brand-bg)"/>
+          <g opacity=".12" stroke="#42e8ff"><path d="M40 80h560M40 140h560M40 200h560M40 260h560M40 320h560M40 380h560M40 440h560"/><path d="M80 40v440M160 40v440M240 40v440M320 40v440M400 40v440M480 40v440M560 40v440"/></g>
+          <rect x="115" y="110" width="410" height="350" rx="76" fill="none" stroke="url(#ddc-brand-accent)" stroke-width="12" filter="url(#ddc-brand-glow)"/>
+          <rect x="165" y="170" width="160" height="118" rx="22" fill="none" stroke="#42e8ff" stroke-width="8" stroke-dasharray="18 12"/>
+          <g transform="rotate(8 390 310)" filter="url(#ddc-brand-glow)"><rect x="315" y="235" width="168" height="126" rx="25" fill="url(#ddc-brand-accent)"/><path d="M390 282v-24m0 80v24m-40-64h-24m104 0h24" stroke="#fff" stroke-width="9" stroke-linecap="round"/></g>
+          <path d="M462 350c-13-27-42-15-38 10l10 63-22-38c-11-18-36-5-27 14l30 70c10 24 28 39 52 39 38 0 66-30 66-68v-54c0-24-32-28-39-7l-6-35c-5-24-36-20-38 2z" fill="#f8fafc" stroke="#071522" stroke-width="8"/>
+          <text x="320" y="585" text-anchor="middle" fill="#f8fafc" font-family="Inter,Segoe UI,sans-serif" font-size="55" font-weight="800">DYNAMIC</text>
+          <text x="320" y="650" text-anchor="middle" fill="url(#ddc-brand-accent)" font-family="Inter,Segoe UI,sans-serif" font-size="48" font-weight="800">DRAG &amp; DROP</text>
+          <text x="320" y="700" text-anchor="middle" fill="#8fa9c2" font-family="Inter,Segoe UI,sans-serif" font-size="25" letter-spacing="8">DASHBOARD</text>
+        </svg>`;
     }
     const content = document.createElement('div');
     content.className = 'ddc-empty-content';

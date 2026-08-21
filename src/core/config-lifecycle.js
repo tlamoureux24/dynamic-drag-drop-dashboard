@@ -151,7 +151,7 @@ const setConfigMethods = {
       this.containerFixedHeight     = Number(config.container_fixed_height ?? 0) || null;
       this.containerPreset          = config.container_preset || 'fhd';
       this.containerPresetOrient    = config.container_preset_orientation || 'auto';
-      this.heroImage = config?.hero_image || "https://i.postimg.cc/j2bvd9Tc/Chat-GPT-Image-May-18-2026-02-33-38-PM.png";
+      this.heroImage = String(config?.hero_image || '').trim();
       // Tabs options
       this.tabs               = Array.isArray(config.tabs) ? config.tabs : [];
       {

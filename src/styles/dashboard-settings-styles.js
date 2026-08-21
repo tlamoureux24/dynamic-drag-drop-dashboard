@@ -111,6 +111,7 @@ export function getSettingsStyles() {
   .row { display:flex; align-items:center; gap:12px; }
   .row label { flex:1; font-size:.95rem; }
   .row input[type="text"], .row input[type="number"], .row input[type="password"], .row select { flex:1; padding:8px; border:1px solid var(--divider-color, rgba(0,0,0,.2)); border-radius:8px; background:var(--card-background-color, #fff); }
+  #ddc-home24-settings ha-entity-picker{display:block;width:100%;}
   .range-wrap { display:flex; align-items:center; gap:12px; }
   .range-wrap input[type="range"] { flex:1; }
   .range-wrap output { width:64px; text-align:right; color:var(--secondary-text-color); font-weight:600; }

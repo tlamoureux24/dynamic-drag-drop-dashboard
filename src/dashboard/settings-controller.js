@@ -201,6 +201,7 @@ const dashboardSettingsMethods = {
     const chkHome24Dynamic = modal.querySelector('#ddc-home24-enabled');
     const home24Settings = modal.querySelector('#ddc-home24-settings');
     const inpHome24Weather = modal.querySelector('#ddc-home24-weather');
+    const inpHome24Sun = modal.querySelector('#ddc-home24-sun');
     const inpHome24Sunrise = modal.querySelector('#ddc-home24-sunrise');
     const inpHome24Sunset = modal.querySelector('#ddc-home24-sunset');
     const inpHome24Base = modal.querySelector('#ddc-home24-base');
@@ -288,11 +289,19 @@ const dashboardSettingsMethods = {
       || (this._config?.background_image?.src ? 'image' : 'none');
     if (selBgMode) selBgMode.value = String(bgMode);
     const dynamicBgCfg = this._config?.background_dynamic || {};
+    const configureEntityPicker = (picker, domains, value = '') => {
+      if (!picker) return;
+      picker.hass = this._hass;
+      picker.includeDomains = domains;
+      picker.allowCustomEntity = true;
+      picker.value = String(value || '');
+    };
     const home24Enabled = !!dynamicBgCfg.enabled && dynamicBgCfg.preset === 'home24_scenes';
     if (chkHome24Dynamic) chkHome24Dynamic.checked = home24Enabled;
-    if (inpHome24Weather) inpHome24Weather.value = String(dynamicBgCfg.weather_entity || '');
-    if (inpHome24Sunrise) inpHome24Sunrise.value = String(dynamicBgCfg.sunrise_entity || 'input_datetime.home24_sunrise_today');
-    if (inpHome24Sunset) inpHome24Sunset.value = String(dynamicBgCfg.sunset_entity || 'input_datetime.home24_sunset_today');
+    configureEntityPicker(inpHome24Weather, ['weather'], dynamicBgCfg.weather_entity);
+    configureEntityPicker(inpHome24Sun, ['sun'], dynamicBgCfg.sun_entity || 'sun.sun');
+    configureEntityPicker(inpHome24Sunrise, ['input_datetime'], dynamicBgCfg.sunrise_entity);
+    configureEntityPicker(inpHome24Sunset, ['input_datetime'], dynamicBgCfg.sunset_entity);
     if (inpHome24Base) inpHome24Base.value = String(dynamicBgCfg.base_url || '/local/home24/backgrounds/scenes');
     if (inpHome24Fallback) inpHome24Fallback.value = String(dynamicBgCfg.fallback || '/local/home24/backgrounds/home24-day-v4.png');
     const syncHome24Settings = () => {
@@ -3075,6 +3084,7 @@ const dashboardSettingsMethods = {
             enabled: true,
             preset: 'home24_scenes',
             weather_entity: String(inpHome24Weather?.value || '').trim(),
+            sun_entity: String(inpHome24Sun?.value || '').trim() || 'sun.sun',
             sunrise_entity: String(inpHome24Sunrise?.value || '').trim(),
             sunset_entity: String(inpHome24Sunset?.value || '').trim(),
             base_url: String(inpHome24Base?.value || '').trim() || '/local/home24/backgrounds/scenes',

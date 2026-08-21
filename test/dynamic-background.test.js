@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   resolveDynamicBackground,
   resolveHome24SceneKey,
@@ -73,6 +74,17 @@ test('every Home24 phase and weather combination targets one of the 40 shipped s
   for (const phase of phases) {
     for (const condition of weather) assert.ok(files.has(resolveHome24SceneKey(phase, condition)), `${phase}/${condition}`);
   }
+});
+
+test('Home24 settings use domain-filtered Home Assistant entity pickers', async () => {
+  const template = await readFile(new URL('../src/dashboard/settings-template.js', import.meta.url), 'utf8');
+  const controller = await readFile(new URL('../src/dashboard/settings-controller.js', import.meta.url), 'utf8');
+  for (const id of ['ddc-home24-weather', 'ddc-home24-sun', 'ddc-home24-sunrise', 'ddc-home24-sunset']) {
+    assert.match(template, new RegExp(`<ha-entity-picker id="${id}"`));
+  }
+  assert.match(controller, /configureEntityPicker\(inpHome24Weather, \['weather'\]/);
+  assert.match(controller, /configureEntityPicker\(inpHome24Sun, \['sun'\]/);
+  assert.match(controller, /configureEntityPicker\(inpHome24Sunrise, \['input_datetime'\]/);
 });
 
 test('weather conditions resolve to extensible groups', () => {

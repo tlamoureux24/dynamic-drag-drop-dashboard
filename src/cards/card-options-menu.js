@@ -9,6 +9,28 @@ import { renderStylePresetLibrary, resolveStylePreviewBackground } from '../dash
 
 /* Per-card style and card settings overlay helpers. */
 const cardSettingsMenuMethods = {
+  _contrastTextForBackground_(background = '') {
+    const colors = String(background || '').match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || [];
+    if (!colors.length) return '';
+    const luminances = colors.map((color) => {
+      let channels = [];
+      if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const expanded = hex.length === 3 ? hex.split('').map((part) => part + part).join('') : hex.slice(0, 6);
+        if (expanded.length === 6) channels = [0, 2, 4].map((index) => parseInt(expanded.slice(index, index + 2), 16));
+      } else {
+        channels = (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      }
+      if (channels.length !== 3 || channels.some((value) => !Number.isFinite(value))) return 1;
+      const linear = channels.map((value) => {
+        const channel = Math.max(0, Math.min(255, value)) / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2]);
+    });
+    return luminances.reduce((sum, value) => sum + value, 0) / luminances.length < 0.24 ? '#f8fafc' : '';
+  },
+
   _normalizePerCardStyle_(style = {}) {
     const out = {};
     for (const key of ['background', 'container_background', 'text_color', 'border_color']) {
@@ -80,9 +102,12 @@ const cardSettingsMenuMethods = {
       '--state-icon-color',
       '--mdc-theme-text-primary-on-background'
     ];
-    if (!themeOwnsDesign && next.text_color) {
-      wrap.style.color = next.text_color;
-      textProps.forEach((prop) => wrap.style.setProperty(prop, next.text_color));
+    const resolvedTextColor = !themeOwnsDesign
+      ? (next.text_color || this._contrastTextForBackground_(resolvedInnerBackground || this.cardBackground))
+      : '';
+    if (resolvedTextColor) {
+      wrap.style.color = resolvedTextColor;
+      textProps.forEach((prop) => wrap.style.setProperty(prop, resolvedTextColor));
     } else {
       wrap.style.removeProperty('color');
       textProps.forEach((prop) => wrap.style.removeProperty(prop));

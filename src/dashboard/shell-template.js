@@ -7818,6 +7818,7 @@ export function getDashboardShellTemplate() {
             opacity:.9;
             filter:saturate(.96) contrast(1.03);
           }
+          .ddc-empty-brand{display:block;width:100%;height:100%;object-fit:cover;}
           .ddc-empty-visual::after{
             content:"";
             position:absolute;

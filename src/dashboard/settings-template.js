@@ -564,11 +564,14 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
         <div class="hint">Selects one of the 40 scenes from weather plus sunrise/sunset-relative phases.</div>
         <div class="stack" id="ddc-home24-settings">
           <label for="ddc-home24-weather">Weather entity</label>
-          <input type="text" id="ddc-home24-weather" placeholder="weather.home" />
-          <label for="ddc-home24-sunrise">Sunrise helper</label>
-          <input type="text" id="ddc-home24-sunrise" placeholder="input_datetime.home24_sunrise_today" />
-          <label for="ddc-home24-sunset">Sunset helper</label>
-          <input type="text" id="ddc-home24-sunset" placeholder="input_datetime.home24_sunset_today" />
+          <ha-entity-picker id="ddc-home24-weather"></ha-entity-picker>
+          <label for="ddc-home24-sun">Solar entity (automatic fallback)</label>
+          <ha-entity-picker id="ddc-home24-sun"></ha-entity-picker>
+          <div class="hint">Used automatically when the optional sunrise and sunset helpers are unavailable.</div>
+          <label for="ddc-home24-sunrise">Sunrise helper (optional)</label>
+          <ha-entity-picker id="ddc-home24-sunrise"></ha-entity-picker>
+          <label for="ddc-home24-sunset">Sunset helper (optional)</label>
+          <ha-entity-picker id="ddc-home24-sunset"></ha-entity-picker>
           <label for="ddc-home24-base">Scenes directory URL</label>
           <input type="text" id="ddc-home24-base" placeholder="/local/home24/backgrounds/scenes" />
           <label for="ddc-home24-fallback">Fallback image URL</label>

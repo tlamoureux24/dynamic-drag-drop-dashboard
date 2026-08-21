@@ -5,16 +5,16 @@
 <p><strong>One Home Assistant integration for visual dashboards, local persistence, and dynamic backgrounds.</strong></p>
 
 <p>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Prosono/Drag-And-Drop-Card?display_name=tag&amp;sort=semver&amp;style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/Prosono/Drag-And-Drop-Card?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tlamoureux24/dynamic-drag-drop-dashboard?display_name=tag&amp;sort=semver&amp;style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge&amp;logo=github"></a>
 </p>
 
 <p>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
-  <a href="https://github.com/Prosono/Drag-And-Drop-Card/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/Prosono/Drag-And-Drop-Card?style=for-the-badge"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
+  <a href="https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/tlamoureux24/dynamic-drag-drop-dashboard?style=for-the-badge"></a>
   <a href="#installation"><img alt="HACS custom repository" src="https://img.shields.io/badge/HACS-Custom-41BDF5?style=for-the-badge&amp;logo=homeassistant&amp;logoColor=white"></a>
   <a href="hacs.json"><img alt="Home Assistant 2025.8 or newer" src="https://img.shields.io/badge/Home_Assistant-2025.8%2B-41BDF5?style=for-the-badge&amp;logo=homeassistant&amp;logoColor=white"></a>
 </p>
@@ -31,8 +31,8 @@
 > **Fork status:** this project is being converted from Prosono's
 > Drag-And-Drop-Card and Drag-And-Drop-Card-Backend into one HACS integration.
 > The current `0.1.0` foundation bundles the frontend and local persistence.
-> The marketplace, account, and purchase features have been removed. The
-> weather/time background engine is the next development phase. See
+> The marketplace, account, and purchase features have been removed. Dynamic
+> weather and sunrise/sunset-relative Home24 backgrounds are included. See
 > [UPSTREAM.md](UPSTREAM.md) for attribution and tracking.
 
 <p align="center">
@@ -83,7 +83,7 @@ Drag & Drop Card is a freeform canvas for the Home Assistant Lovelace UI. Arrang
 
 1. In HACS, open the menu and choose **Custom repositories**.
 2. Add `https://github.com/tlamoureux24/dynamic-drag-drop-dashboard` with **Integration** as the category.
-3. Search for **Dynamic Drag & Drop Dashboard** and select **Download**.
+3. Search for **Dynamic Drag & Drop Dashboard** and select **Download**. Published versions are distributed as the release archive `dynamic_drag_drop_dashboard.zip`.
 4. Restart Home Assistant.
 5. Open **Settings → Devices & services → Add integration**, then add **Dynamic Drag & Drop Dashboard**.
 6. Hard-refresh the browser if the card does not appear immediately.
@@ -1103,7 +1103,7 @@ For another hands-on preview, [open the extended demo GIF](assets/demo2.gif) (24
 
 Issues, feature proposals, documentation improvements, and pull requests are welcome.
 
-1. Check the [open issues](https://github.com/Prosono/Drag-And-Drop-Card/issues) before starting larger changes.
+1. Check the [open issues](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues) before starting larger changes.
 2. Fork the repository and create a focused branch.
 3. Install dependencies, run the tests, and build the production bundle:
 
@@ -1138,7 +1138,7 @@ Third-party licenses and bundled dependency notices are documented in [`THIRD_PA
 
 ## 🧾 Release Notes
 
-See [GitHub Releases](https://github.com/Prosono/Drag-And-Drop-Card/releases) for version history, highlights, and upgrade notes. The installed bundle also logs its version in the browser console:
+See [GitHub Releases](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/releases) for version history, highlights, and upgrade notes. The installed bundle also logs its version in the browser console:
 
 ```text
 drag-and-drop-card vX.Y.Z
@@ -1148,6 +1148,6 @@ drag-and-drop-card vX.Y.Z
 
 ## ⚠️ Known limitations
 
-Known issues are tracked in the [GitHub issue tracker](https://github.com/Prosono/Drag-And-Drop-Card/issues). One current limitation is worth highlighting:
+Known issues are tracked in the [GitHub issue tracker](https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues). One current limitation is worth highlighting:
 
 - `card-mod` support **inside nested cards** is still limited and may not behave as expected. The outer Drag & Drop Card supports `card_mod` directly.

@@ -78,6 +78,7 @@ const FR = Object.freeze({
   'Card drop shadow': 'Ombre portée des cartes', 'Prioritize theme colors': 'Prioriser les couleurs du thème',
   'Light (recommended)': 'Clair (recommandé)', 'Dark': 'Sombre', 'Follow dashboard': 'Suivre le tableau de bord',
   'Named surfaces': 'Surfaces nommées', 'Presets': 'Préréglages', 'Randomize all style': 'Style entièrement aléatoire',
+  'Show all styles': 'Afficher tous les styles', 'Show fewer styles': 'Afficher moins de styles',
   'Fixed': 'Fixe', 'Fixed (custom)': 'Fixe (personnalisé)', 'Custom': 'Personnalisé', 'Preset': 'Préréglage',
   'Visible': 'Visible', 'Hidden': 'Masqué', 'Scroll': 'Défilement', 'Scroll when needed': 'Défiler si nécessaire',
   'Connection lines': 'Lignes de connexion', 'Add particles': 'Ajouter des particules',

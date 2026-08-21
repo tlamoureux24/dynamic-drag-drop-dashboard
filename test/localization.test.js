@@ -12,6 +12,11 @@ test('common dashboard controls have French translations', () => {
   assert.equal(translateDashboardText('Dashboard Settings', 'fr'), 'Réglages du tableau de bord');
   assert.equal(translateDashboardText('Add & Save', 'fr'), 'Ajouter et enregistrer');
   assert.equal(translateDashboardText('Weather entity', 'fr'), 'Entité météo');
+  assert.equal(translateDashboardText('Build your first dashboard.', 'fr'), 'Créez votre premier tableau de bord.');
+  assert.equal(
+    translateDashboardText('Double-click empty space to enter Edit Mode.', 'fr'),
+    'Double-cliquez sur un espace vide pour passer en mode édition.'
+  );
   assert.equal(translateDashboardText('Unknown future label', 'fr'), 'Unknown future label');
   assert.equal(translateDashboardText('Dashboard Settings', 'en'), 'Dashboard Settings');
 });

@@ -26,11 +26,20 @@ const FR = Object.freeze({
   'Choose how the canvas should behave, add your first card, then shape the dashboard visually on the grid.':
     'Choisissez le comportement du canevas, ajoutez votre première carte, puis composez visuellement le tableau de bord sur la grille.',
   '1. Pick a mode': '1. Choisir un mode', '2. Add cards': '2. Ajouter des cartes', '3. Play around': '3. Expérimenter',
+  'Getting started steps': 'Étapes de démarrage',
+  'Use a fixed Full HD canvas or let Auto scale to the viewport.':
+    'Utilisez un canevas Full HD fixe ou laissez le mode Automatique s’adapter à la fenêtre.',
+  'Open the card picker and place Home Assistant or Drag & Drop cards.':
+    'Ouvrez le sélecteur et placez des cartes Home Assistant ou Drag & Drop.',
+  'Drag, resize, layer, test ideas, and save when the dashboard feels right.':
+    'Déplacez, redimensionnez, superposez, expérimentez, puis enregistrez lorsque le résultat vous convient.',
   'Add your first card': 'Ajouter votre première carte', 'Dashboard settings': 'Réglages du tableau de bord',
+  'Dashboard setup': 'Configuration du tableau de bord', 'Canvas size mode': 'Mode de taille du canevas',
   'Fixed Size (Full HD)': 'Taille fixe (Full HD)', '1920 x 1080 canvas': 'Canevas 1920 × 1080',
   'Auto': 'Automatique', 'Scales to the current viewport': 'S’adapte à la fenêtre actuelle',
   'Or:': 'Ou :', 'Import Existing Lovelace Dashboard': 'Importer un tableau de bord Lovelace existant',
   'Read the start guide': 'Lire le guide de démarrage',
+  'Double-click empty space to enter Edit Mode.': 'Double-cliquez sur un espace vide pour passer en mode édition.',
   'Layout sets the rules for the canvas.': 'La disposition définit les règles du canevas.',
   'Storage key': 'Clé de stockage', 'Grid size': 'Taille de la grille', 'Quick canvas sizes': 'Tailles rapides du canevas',
   'Live snap while dragging': 'Alignement en direct pendant le déplacement', 'Prevent overlap': 'Empêcher le chevauchement',
@@ -287,6 +296,10 @@ export function translateDashboardTree(root, language = 'en') {
 const localizationMethods = {
   _dashboardLanguage_() {
     return resolveDashboardLanguage(this._hass);
+  },
+
+  _dashboardText_(value) {
+    return translateDashboardText(value, this._dashboardLanguage_?.() || 'en');
   },
 
   _translateDashboardUi_(root = this.shadowRoot) {

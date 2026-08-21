@@ -278,6 +278,7 @@ const emptyStateMethods = {
         <span>Double-click empty space to enter Edit Mode.</span>
       </div>
     `;
+    this._translateDashboardUi_?.(content);
 
     const handleEmptyAction = async (e) => {
       const btn = e.target?.closest?.('[data-ddc-empty-action]');

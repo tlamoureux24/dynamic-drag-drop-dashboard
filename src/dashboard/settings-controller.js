@@ -60,6 +60,7 @@ const dashboardSettingsMethods = {
     // Append to our own shadow root so built-in .modal styles apply and centering works
     this.__settingsModal = modal;
     this.shadowRoot.appendChild(modal);
+    this._translateDashboardUi_?.(modal);
 
     const settingsTabs = Array.from(modal.querySelectorAll('[data-settings-tab]'));
     const settingsSections = Array.from(modal.querySelectorAll('[data-settings-section]'));

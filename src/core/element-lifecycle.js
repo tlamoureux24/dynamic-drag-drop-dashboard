@@ -120,6 +120,7 @@ const lifecycleMethods = {
         return;
       }
       try {
+        this._startDashboardLocalization_?.();
         this._installGridObservers_();
         this._updateGridButtonsVisibility();
       } catch {}
@@ -207,6 +208,7 @@ const lifecycleMethods = {
     },
 
   disconnectedCallback() {
+      try { this._stopDashboardLocalization_?.(); } catch {}
       try { this._clearEditorAppearance_?.(); } catch {}
       try { this._uninstallGridObservers_(); } catch {}
       try { this._setHeaderVisible_?.(true); this._setSidebarVisible_?.(true); } catch {}
@@ -332,6 +334,7 @@ const lifecycleMethods = {
 
   set hass(hass) {
       this._hass = hass;
+      try { this._translateDashboardUi_?.(); } catch {}
       try { this._refreshDynamicBackground_?.(); } catch {}
       const hassApiReady = !!(hass && typeof hass.callApi === 'function');
       if (!this.__probed && hassApiReady) {

@@ -9,6 +9,58 @@ const FR = Object.freeze({
   'Import & Share': 'Importer et partager', 'Settings': 'Réglages', 'Misc': 'Outils',
   'Layouts': 'Dispositions', 'View': 'Affichage', 'Status': 'État', 'System OK': 'Système OK',
   'Add Card': 'Ajouter une carte', 'Add card': 'Ajouter une carte', 'Save': 'Enregistrer',
+  'Add a card': 'Ajouter une carte', 'Edit card': 'Modifier la carte', 'Update': 'Mettre à jour', 'Add': 'Ajouter',
+  'Cards': 'Cartes', 'By entity': 'Par entité', 'Card picker source': 'Source du sélecteur de cartes',
+  'Search cards (name or type)…': 'Rechercher une carte (nom ou type)…', 'search': 'rechercher',
+  'Favorites': 'Favoris', 'Recent': 'Récents', 'Basics': 'Éléments de base', 'Sensors': 'Capteurs',
+  'Visual': 'Visuel', 'Controls': 'Commandes', 'Drag and drop cards': 'Cartes Drag & Drop',
+  'Tile': 'Tuile', 'Button': 'Bouton', 'Glance': 'Coup d’œil',
+  'To-do list': 'Liste de tâches', 'Custom Card': 'Carte personnalisée',
+  'Vertical stack': 'Pile verticale', 'Horizontal stack': 'Pile horizontale',
+  'Sensor': 'Capteur', 'Gauge': 'Jauge', 'History graph': 'Graphique historique',
+  'Statistics graph': 'Graphique statistique', 'Picture entity': 'Image d’entité',
+  'Picture glance': 'Aperçu en image', 'Map': 'Carte', 'Light': 'Lumière',
+  'Thermostat': 'Thermostat', 'Media control': 'Contrôle multimédia', 'Alarm panel': 'Panneau d’alarme',
+  'Area': 'Zone', 'HTML / Web card': 'Carte HTML / Web', 'Table card': 'Carte tableau',
+  'Icon card': 'Carte icône', 'Text card': 'Carte texte',
+  'Build a custom card with your own HTML, CSS and JavaScript inside Drag & Drop Card.':
+    'Créez une carte avec votre propre HTML, CSS et JavaScript dans Drag & Drop Card.',
+  'Build a visual table with text, icons, entity states, badges and buttons directly inside Drag & Drop Card.':
+    'Créez un tableau visuel avec textes, icônes, états, badges et boutons directement dans Drag & Drop Card.',
+  'Place a pure icon design object with state-based color, glow, pulse and optional click action.':
+    'Placez une icône dont la couleur, le halo, l’animation et l’action peuvent dépendre de son état.',
+  'Create a pure typography object with font controls, semantic text styles and editorial layout options.':
+    'Créez un élément typographique avec réglages de police, styles sémantiques et options de mise en page.',
+  'Quick fill': 'Remplissage rapide', 'card-aware': 'adapté à la carte', 'Preview': 'Aperçu',
+  'Card options (official editor)': 'Options de la carte (éditeur officiel)',
+  'Visibility': 'Visibilité', 'YAML editor': 'Éditeur YAML',
+  'Tip: use': 'Astuce : utilisez', 'to favorite cards you use often': 'pour ajouter vos cartes favorites',
+  'No favorites yet.': 'Aucun favori pour le moment.', 'No recent items yet.': 'Aucun élément récent.',
+  'Reserved for Drag & Drop Card': 'Réservé à Drag & Drop Card',
+  'Cards that only work inside Drag & Drop Card will appear here.':
+    'Les cartes fonctionnant uniquement dans Drag & Drop Card apparaîtront ici.',
+  'Search compatible cards...': 'Rechercher des cartes compatibles…',
+  'Search entities by name, ID, domain, or state...': 'Rechercher une entité par nom, identifiant, domaine ou état…',
+  'Choose a card for entity': 'Choisir une carte pour l’entité', 'Change entity': 'Changer d’entité',
+  'Selected entity': 'Entité sélectionnée', 'Step 2 of 2': 'Étape 2 sur 2', 'Choose a card': 'Choisir une carte',
+  'Compatible cards': 'Cartes compatibles', 'Recommended': 'Recommandée', 'Installed': 'Installée',
+  'No card types found': 'Aucun type de carte trouvé', 'Try a card name or clear the search.': 'Essayez un nom de carte ou effacez la recherche.',
+  'Add card by entity': 'Ajouter une carte par entité', 'Choose an entity': 'Choisir une entité',
+  'Select what you want to show or control. You will choose the card type in the next step.':
+    'Sélectionnez ce que vous souhaitez afficher ou contrôler. Vous choisirez le type de carte à l’étape suivante.',
+  'Suggested entities': 'Entités suggérées', 'Refine the search to narrow the results.': 'Affinez la recherche pour réduire les résultats.',
+  'No entities found': 'Aucune entité trouvée', 'Try a name, entity ID, domain, or current state.': 'Essayez un nom, un identifiant, un domaine ou un état actuel.',
+  'No quick fill for this card — use the editors below.': 'Aucun remplissage rapide pour cette carte — utilisez les éditeurs ci-dessous.',
+  'Show state color': 'Afficher la couleur de l’état', 'Type': 'Type',
+  'No conditions defined – this card is always visible.': 'Aucune condition définie : cette carte est toujours visible.',
+  'State is equal to': 'L’état est égal à', 'State is not equal to': 'L’état est différent de',
+  'The card will be shown when ALL conditions below are fulfilled. If no conditions are set, the card will always be shown.':
+    'La carte sera affichée lorsque TOUTES les conditions ci-dessous seront remplies. Sans condition, elle restera toujours visible.',
+  'Loading users…': 'Chargement des utilisateurs…',
+  'Custom card placeholder: use the YAML editor to paste the card type and options.':
+    'Carte personnalisée : utilisez l’éditeur YAML pour coller son type et ses options.',
+  'This card does not support a visual editor. Please use the YAML tab to configure it.':
+    'Cette carte ne possède pas d’éditeur visuel. Utilisez l’onglet YAML pour la configurer.',
   'Auto-save': 'Enregistrement auto', 'Toggle auto-save': 'Activer/désactiver l’enregistrement automatique',
   'On': 'Activé', 'Off': 'Désactivé', 'Copy': 'Copier', 'Paste': 'Coller', 'Undo': 'Annuler', 'Redo': 'Rétablir',
   'Import': 'Importer', 'Export': 'Exporter', 'Exit Edit Mode': 'Quitter le mode édition',
@@ -263,7 +315,16 @@ export function resolveDashboardLanguage(hass) {
 
 export function translateDashboardText(value, language = 'en') {
   if (language !== 'fr') return String(value ?? '');
-  return FR[String(value ?? '').trim()] || String(value ?? '');
+  const source = String(value ?? '');
+  const text = source.trim();
+  if (FR[text]) return FR[text];
+  let match = text.match(/^(\d+) compatible$/);
+  if (match) return `${match[1]} compatible${match[1] === '1' ? '' : 's'}`;
+  match = text.match(/^(\d+) matching (?:entity|entities)$/);
+  if (match) return `${match[1]} entité${match[1] === '1' ? ' correspondante' : 's correspondantes'}`;
+  match = text.match(/^(\d+) available$/);
+  if (match) return `${match[1]} disponible${match[1] === '1' ? '' : 's'}`;
+  return source;
 }
 
 function translateTextNode(node, language) {

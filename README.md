@@ -1,5 +1,7 @@
 <div align="center">
 
+<p><strong>English</strong> · <a href="README.fr.md">Français</a></p>
+
 <h1>Dynamic Drag &amp; Drop Dashboard for Home Assistant</h1>
 
 <p><strong>One Home Assistant integration for visual dashboards, local persistence, and dynamic backgrounds.</strong></p>

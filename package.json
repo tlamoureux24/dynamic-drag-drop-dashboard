@@ -1,6 +1,6 @@
 {
   "name": "dynamic-drag-drop-dashboard",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A unified Home Assistant integration for building dynamic drag-and-drop dashboards.",
   "type": "module",
   "license": "MIT",

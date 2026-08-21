@@ -296,7 +296,10 @@ const emptyStateMethods = {
       } else if (action === 'convert-dashboard') {
         this._openDashboardConverter_?.();
       } else if (action === 'docs') {
-        window.open('https://github.com/tlamoureux24/dynamic-drag-drop-dashboard#quick-start', '_blank', 'noopener,noreferrer');
+        const guideUrl = this._dashboardLanguage_?.() === 'fr'
+          ? 'https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/blob/main/README.fr.md#démarrage-rapide'
+          : 'https://github.com/tlamoureux24/dynamic-drag-drop-dashboard#quick-start';
+        window.open(guideUrl, '_blank', 'noopener,noreferrer');
       } else if (action === 'size-mode') {
         await this._applyEmptyDashboardSizeMode_(btn.dataset.sizeMode || 'fixed-fhd');
       } else if (action === 'preset') {

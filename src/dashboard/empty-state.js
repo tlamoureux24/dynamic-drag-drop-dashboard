@@ -238,44 +238,45 @@ const emptyStateMethods = {
     }
     const content = document.createElement('div');
     content.className = 'ddc-empty-content';
+    const t = (value) => this._dashboardText_?.(value) || value;
     content.innerHTML = `
-      <div class="ddc-empty-kicker"><ha-icon icon="mdi:creation-outline"></ha-icon><span>Start here</span></div>
-      <h2 class="ddc-empty-title">Build your first dashboard.</h2>
-      <p class="ddc-empty-sub">Choose how the canvas should behave, add your first card, then shape the dashboard visually on the grid.</p>
-      <div class="ddc-empty-steps" aria-label="Getting started steps">
-        <div class="ddc-empty-step"><strong>1. Pick a mode</strong><span>Use a fixed Full HD canvas or let Auto scale to the viewport.</span></div>
-        <div class="ddc-empty-step"><strong>2. Add cards</strong><span>Open the card picker and place Home Assistant or Drag & Drop cards.</span></div>
-        <div class="ddc-empty-step"><strong>3. Play around</strong><span>Drag, resize, layer, test ideas, and save when the dashboard feels right.</span></div>
+      <div class="ddc-empty-kicker"><ha-icon icon="mdi:creation-outline"></ha-icon><span>${t('Start here')}</span></div>
+      <h2 class="ddc-empty-title">${t('Build your first dashboard.')}</h2>
+      <p class="ddc-empty-sub">${t('Choose how the canvas should behave, add your first card, then shape the dashboard visually on the grid.')}</p>
+      <div class="ddc-empty-steps" aria-label="${t('Getting started steps')}">
+        <div class="ddc-empty-step"><strong>${t('1. Pick a mode')}</strong><span>${t('Use a fixed Full HD canvas or let Auto scale to the viewport.')}</span></div>
+        <div class="ddc-empty-step"><strong>${t('2. Add cards')}</strong><span>${t('Open the card picker and place Home Assistant or Drag & Drop cards.')}</span></div>
+        <div class="ddc-empty-step"><strong>${t('3. Play around')}</strong><span>${t('Drag, resize, layer, test ideas, and save when the dashboard feels right.')}</span></div>
       </div>
       <button type="button" class="ddc-empty-btn primary ddc-empty-wide ddc-empty-add" data-ddc-empty-action="add">
-        <ha-icon icon="mdi:plus-circle-outline"></ha-icon><span>Add your first card</span>
+        <ha-icon icon="mdi:plus-circle-outline"></ha-icon><span>${t('Add your first card')}</span>
       </button>
-      <div class="ddc-empty-setup" aria-label="Dashboard setup">
+      <div class="ddc-empty-setup" aria-label="${t('Dashboard setup')}">
         <button type="button" class="ddc-empty-btn ddc-empty-settings" data-ddc-empty-action="settings">
-          <ha-icon icon="mdi:tune-variant"></ha-icon><span>Dashboard settings</span>
+          <ha-icon icon="mdi:tune-variant"></ha-icon><span>${t('Dashboard settings')}</span>
         </button>
-        <div class="ddc-empty-presets" aria-label="Canvas size mode">
+        <div class="ddc-empty-presets" aria-label="${t('Canvas size mode')}">
           <button type="button" class="ddc-empty-btn ddc-empty-preset" data-ddc-empty-action="size-mode" data-size-mode="fixed-fhd">
             <ha-icon icon="mdi:monitor-screenshot"></ha-icon>
-            <span class="ddc-empty-size-copy"><span>Fixed Size (Full HD)</span><small>1920 x 1080 canvas</small></span>
+            <span class="ddc-empty-size-copy"><span>${t('Fixed Size (Full HD)')}</span><small>${t('1920 x 1080 canvas')}</small></span>
           </button>
           <button type="button" class="ddc-empty-btn ddc-empty-preset" data-ddc-empty-action="size-mode" data-size-mode="auto">
             <ha-icon icon="mdi:fit-to-screen-outline"></ha-icon>
-            <span class="ddc-empty-size-copy"><span>Auto</span><small>Scales to the current viewport</small></span>
+            <span class="ddc-empty-size-copy"><span>${t('Auto')}</span><small>${t('Scales to the current viewport')}</small></span>
           </button>
         </div>
       </div>
       <div class="ddc-empty-import-choice">
-        <div class="ddc-empty-or" aria-hidden="true"><span>Or:</span></div>
+        <div class="ddc-empty-or" aria-hidden="true"><span>${t('Or:')}</span></div>
         <button type="button" class="ddc-empty-btn ddc-empty-wide ddc-empty-import" data-ddc-empty-action="convert-dashboard">
-          <ha-icon icon="mdi:view-dashboard-edit-outline"></ha-icon><span>Import Existing Lovelace Dashboard</span>
+          <ha-icon icon="mdi:view-dashboard-edit-outline"></ha-icon><span>${t('Import Existing Lovelace Dashboard')}</span>
         </button>
       </div>
       <div class="ddc-empty-links">
         <button type="button" class="ddc-empty-link" data-ddc-empty-action="docs">
-          <ha-icon icon="mdi:help-circle-outline"></ha-icon><span>Read the start guide</span>
+          <ha-icon icon="mdi:help-circle-outline"></ha-icon><span>${t('Read the start guide')}</span>
         </button>
-        <span>Double-click empty space to enter Edit Mode.</span>
+        <span>${t('Double-click empty space to enter Edit Mode.')}</span>
       </div>
     `;
     this._translateDashboardUi_?.(content);

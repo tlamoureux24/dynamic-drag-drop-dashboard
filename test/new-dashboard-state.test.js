@@ -178,7 +178,14 @@ test('the empty-state actions follow the guided onboarding hierarchy', () => {
   assert.ok(addIndex < settingsIndex);
   assert.ok(settingsIndex < importIndex);
   assert.match(emptyStateSource, /Add your first card/);
-  assert.match(emptyStateSource, /<span>Or:<\/span>/);
+  assert.match(emptyStateSource, /t\('Or:'\)/);
+});
+
+test('the empty-state renders onboarding copy through the dashboard translator', () => {
+  const emptyStateSource = readFileSync(new URL('../src/dashboard/empty-state.js', import.meta.url), 'utf8');
+  assert.match(emptyStateSource, /const t = \(value\) => this\._dashboardText_/);
+  assert.match(emptyStateSource, /\$\{t\('Build your first dashboard\.'\)\}/);
+  assert.match(emptyStateSource, /\$\{t\('Double-click empty space to enter Edit Mode\.'\)\}/);
 });
 
 test('the import review renders every conversion warning', () => {

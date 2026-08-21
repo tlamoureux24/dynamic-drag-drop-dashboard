@@ -1,12 +1,12 @@
 {
   "domain": "dynamic_drag_drop_dashboard",
   "name": "Dynamic Drag & Drop Dashboard",
-  "version": "0.1.0",
-  "documentation": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard",
-  "issue_tracker": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues",
   "codeowners": ["@tlamoureux24"],
-  "iot_class": "local_push",
   "config_flow": true,
   "dependencies": ["frontend", "http"],
-  "requirements": []
+  "documentation": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/issues",
+  "requirements": [],
+  "version": "0.1.0"
 }

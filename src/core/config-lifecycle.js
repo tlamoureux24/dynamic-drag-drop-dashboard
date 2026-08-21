@@ -71,6 +71,7 @@ const setConfigMethods = {
       this.cardOverflow             = this._normalizeCardOverflow_(config.card_overflow);
       this._syncCardOverflow_?.();
       this.applyBackgroundToPage    = !!(config.apply_background_to_page ?? config.applyBackgroundToPage ?? false);
+      try { this._startDynamicBackgroundClock_?.(); } catch {}
       this.dashboardTheme           = String(config.dashboard_theme ?? config.theme_name ?? '').trim();
       this.dashboardThemeEnabled    = !!this.dashboardTheme || !!(config.dashboard_theme_enabled ?? config.theme_enabled ?? false);
       this.dashboardThemeOverrideAllDesign = !!(config.dashboard_theme_override_all_design ?? config.theme_override_all_design ?? false);

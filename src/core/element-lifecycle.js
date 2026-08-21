@@ -128,6 +128,8 @@ const lifecycleMethods = {
 
       try {
         this._applyHaChromeVisibility_?.();
+        this._startDynamicBackgroundClock_?.();
+        this._applyBackgroundFromConfig?.();
         requestAnimationFrame(() => this._syncPageBackgroundToView_?.());
         this._ensureScreenSaverStyles?.();
         this._updateScreensaverSettings?.();
@@ -210,6 +212,7 @@ const lifecycleMethods = {
       try { this._setHeaderVisible_?.(true); this._setSidebarVisible_?.(true); } catch {}
       try { this._applyHaChromeVisibility_?.(); } catch {}
       try { this._clearPageBackground_?.(); } catch {}
+      try { this._stopDynamicBackgroundClock_?.(); } catch {}
 
       if (this.__keyHandlerBound && this.__keyHandler) {
         window.removeEventListener('keydown', this.__keyHandler);
@@ -329,6 +332,7 @@ const lifecycleMethods = {
 
   set hass(hass) {
       this._hass = hass;
+      try { this._refreshDynamicBackground_?.(); } catch {}
       const hassApiReady = !!(hass && typeof hass.callApi === 'function');
       if (!this.__probed && hassApiReady) {
         this.__probed = true;

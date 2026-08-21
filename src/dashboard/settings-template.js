@@ -553,6 +553,29 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
         <div class="hint">Small uploads can be stored inline. For large media, host the file under <code>/local/</code> and paste the URL.</div>
       </div>
 
+      <div class="setting" data-bg-section="image" role="group" aria-labelledby="lbl-home24-scenes">
+        <div class="row">
+          <div class="title">
+            <ha-icon icon="mdi:weather-sunset-up" aria-hidden="true"></ha-icon>
+            <label id="lbl-home24-scenes" for="ddc-home24-enabled">Dynamic Home24 scenes</label>
+          </div>
+          <div class="control"><ha-switch id="ddc-home24-enabled"></ha-switch></div>
+        </div>
+        <div class="hint">Selects one of the 40 scenes from weather plus sunrise/sunset-relative phases.</div>
+        <div class="stack" id="ddc-home24-settings">
+          <label for="ddc-home24-weather">Weather entity</label>
+          <input type="text" id="ddc-home24-weather" placeholder="weather.home" />
+          <label for="ddc-home24-sunrise">Sunrise helper</label>
+          <input type="text" id="ddc-home24-sunrise" placeholder="input_datetime.home24_sunrise_today" />
+          <label for="ddc-home24-sunset">Sunset helper</label>
+          <input type="text" id="ddc-home24-sunset" placeholder="input_datetime.home24_sunset_today" />
+          <label for="ddc-home24-base">Scenes directory URL</label>
+          <input type="text" id="ddc-home24-base" placeholder="/local/home24/backgrounds/scenes" />
+          <label for="ddc-home24-fallback">Fallback image URL</label>
+          <input type="text" id="ddc-home24-fallback" placeholder="/local/home24/backgrounds/home24-day-v4.png" />
+        </div>
+      </div>
+
       <!-- BACKGROUND: PARTICLES -->
       <div class="setting" data-bg-section="particles" role="group" aria-labelledby="lbl-bg-particles" hidden>
         <div class="row">

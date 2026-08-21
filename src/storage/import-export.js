@@ -370,7 +370,7 @@ const designImportExportMethods = {
       'hide_HA_Header','hide_HA_Sidebar',
   
       // Background modes
-      'background_mode','background_image','background_particles','background_youtube',
+      'background_mode','background_image','background_dynamic','background_particles','background_youtube',
   
       // Screen saver
       'screen_saver_enabled','screen_saver_delay','screen_saver_style','screen_saver_image','screensaver_image','screen_saver_background_image','screen_saver_entities',

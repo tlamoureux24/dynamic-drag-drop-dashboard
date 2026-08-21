@@ -1011,6 +1011,65 @@ card_mod:
 
 <a id="troubleshooting"></a>
 
+## Dynamic weather and time backgrounds
+
+The dashboard can select a local image from the state of a Home Assistant weather entity and the
+current local time. Put images in Home Assistant's `www` directory and reference them as `/local/...`.
+
+```yaml
+type: custom:dynamic-drag-drop-dashboard
+background_mode: image
+background_image:
+  size: cover
+  position: center center
+  opacity: 1
+background_dynamic:
+  enabled: true
+  weather_entity: weather.home
+  fallback: /local/dashboard/default.webp
+  time_slots:
+    - { id: morning, start: "06:00", end: "10:00" }
+    - { id: day, start: "10:00", end: "18:00" }
+    - { id: evening, start: "18:00", end: "22:00" }
+    - { id: night, start: "22:00", end: "06:00" }
+  images:
+    clear:
+      morning: /local/dashboard/clear-morning.webp
+      day: /local/dashboard/clear-day.webp
+      evening: /local/dashboard/clear-evening.webp
+      night: /local/dashboard/clear-night.webp
+    rain:
+      day: /local/dashboard/rain-day.webp
+      default: /local/dashboard/rain.webp
+    default:
+      default: /local/dashboard/default.webp
+```
+
+Built-in groups cover clear, cloudy, rain, snow, fog, and wind conditions. Add or override groups
+with `weather_groups`, for example `storm: [lightning, lightning-rainy]`. Overnight slots are
+supported, and changes are applied when Home Assistant updates the entity or the time crosses a slot.
+
+For the Home24 40-scene collection, the native preset keeps its sunrise/sunset-relative phases and
+special storm, fog, and snow rules:
+
+```yaml
+background_mode: image
+background_image:
+  src: /local/home24/backgrounds/home24-day-v4.png
+  size: cover
+  position: center center
+background_dynamic:
+  enabled: true
+  preset: home24_scenes
+  weather_entity: weather.meteo_france_forecast_for_city_saint_medard_de_mussidan_aquitaine_24_fr_saint_medard_de_mussidan
+  sunrise_entity: input_datetime.home24_sunrise_today
+  sunset_entity: input_datetime.home24_sunset_today
+  base_url: /local/home24/backgrounds/scenes
+  fallback: /local/home24/backgrounds/home24-day-v4.png
+```
+
+---
+
 ## 🛠 Troubleshooting
 
 - **Module doesn’t load**: Confirm resource URL & type. Hard-reload browser.

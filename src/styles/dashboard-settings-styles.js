@@ -1923,7 +1923,9 @@ export function getSettingsStyles() {
       background-position: var(--ddc-bg-position, center center);
       background-attachment: var(--ddc-bg-attachment, scroll);
       opacity: var(--ddc-bg-opacity, 1);
+      transition: opacity var(--ddc-bg-transition-duration, 600ms) ease;
     }
+    .ddc-canvas.ddc-bg-transitioning::before{ opacity:0; }
     .ddc-canvas > * { position: relative; z-index: 1; }
 
     /* Tabs manager polish */

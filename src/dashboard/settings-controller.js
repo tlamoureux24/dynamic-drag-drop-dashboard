@@ -226,9 +226,7 @@ const dashboardSettingsMethods = {
     const screenSaverEntityList = modal.querySelector('#ddc-screenSaverEntityList');
 
     const selBgMode           = modal.querySelector('#ddc-bg-mode');
-    const secImg              = modal.querySelector('[data-bg-section="image"]');
-    const secParticles        = modal.querySelector('[data-bg-section="particles"]');
-    const secYoutube          = modal.querySelector('[data-bg-section="youtube"]');
+    const backgroundSections = Array.from(modal.querySelectorAll('[data-bg-section]'));
     const inpParticlesUrl     = modal.querySelector('#ddc-particles-url');
     const chkParticlesPointer = modal.querySelector('#ddc-particles-pointer');
     const rngParticlesCount   = modal.querySelector('#ddc-particles-count');
@@ -299,6 +297,11 @@ const dashboardSettingsMethods = {
     if (inpHome24Fallback) inpHome24Fallback.value = String(dynamicBgCfg.fallback || '/local/home24/backgrounds/home24-day-v4.png');
     const syncHome24Settings = () => {
       if (home24Settings) home24Settings.style.display = chkHome24Dynamic?.checked ? '' : 'none';
+      if (chkHome24Dynamic?.checked && selBgMode) selBgMode.value = 'image';
+      const mode = selBgMode?.value || 'none';
+      backgroundSections.forEach((section) => {
+        section.style.display = section.dataset.bgSection === mode ? '' : 'none';
+      });
     };
     chkHome24Dynamic?.addEventListener('change', syncHome24Settings);
     syncHome24Settings();
@@ -1354,9 +1357,9 @@ const dashboardSettingsMethods = {
     // show/hide sections based on mode
     const showBgSections = () => {
       const m = selBgMode?.value || 'none';
-      if (secImg)       secImg.style.display       = (m === 'image')     ? '' : 'none';
-      if (secParticles) secParticles.style.display = (m === 'particles') ? '' : 'none';
-      if (secYoutube)   secYoutube.style.display   = (m === 'youtube')   ? '' : 'none';
+      backgroundSections.forEach((section) => {
+        section.style.display = section.dataset.bgSection === m ? '' : 'none';
+      });
     };
     selBgMode?.addEventListener('change', showBgSections);
     showBgSections();

@@ -111,7 +111,7 @@ const dashboardSettingsMethods = {
     } catch {}
     activateSettingsTab(initialSettingsTab, { persist: false });
 
-    const wikiBaseUrl = 'https://hads.smarti.dev/wiki';
+    const wikiBaseUrl = 'https://github.com/tlamoureux24/dynamic-drag-drop-dashboard/wiki';
     const wikiDoc = (slug, label) => ({ href: `${wikiBaseUrl}/${slug}`, label });
     const sectionDocsByKey = {
       layout: wikiDoc('layout', 'Wiki: Layout'),

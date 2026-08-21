@@ -53,7 +53,7 @@ const configHelperMethods = {
     try { path = this._getCurrentDashboardUrlPath_?.() || window.location?.pathname || ''; } catch {}
     const seed = {
       path,
-      type: config?.type || 'custom:drag-and-drop-card',
+      type: config?.type || 'custom:dynamic-drag-drop-dashboard',
       cards: Array.isArray(config?.cards) ? config.cards : [],
       tabs: Array.isArray(config?.tabs) ? config.tabs : [],
       default_tab: config?.default_tab || '',

@@ -3,17 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import {
-  bindEntityToHadsCardConfig,
   buildEntityCardConfig,
   buildRecommendedEntityCardConfig,
-  extractHadsCardConfig,
   getCompatibleCardsForEntity,
   getCompatibleCustomCardsForEntity,
-  getCompatibleHadsCardsForEntity,
-  getHadsImportAction,
   getRecommendedCardForEntity,
   installSmartPickerMethods,
-  resolveHadsListingUrl,
 } from '../src/cards/smart-card-picker.js';
 
 test('camera entities receive a live picture entity card', () => {
@@ -171,123 +166,6 @@ test('custom card metadata and conservative type names can declare domain suppor
   ]);
 });
 
-test('available HADS cards are matched by entity domain', () => {
-  const listings = [
-    {
-      type: 'hads:light-control',
-      name: 'Light Control Card',
-      domains: ['light'],
-      downloadUrl: 'https://hads.example/cards/light-control.json',
-      owned: true,
-      price: '2.99 USD',
-    },
-    {
-      type: 'hads:free-light-switch',
-      name: 'Free Light Switch',
-      domains: ['light'],
-      downloadUrl: 'https://hads.example/cards/free-light.json',
-      price: 'Free',
-    },
-    {
-      type: 'hads:paid-not-owned',
-      name: 'Paid Light Card',
-      domains: ['light'],
-      downloadUrl: 'https://hads.example/cards/paid-light.json',
-      price: '1.99 USD',
-    },
-    {
-      type: 'hads:climate-card',
-      name: 'Climate Card',
-      domains: ['climate'],
-      downloadUrl: 'https://hads.example/cards/climate.json',
-      owned: true,
-    },
-    {
-      type: 'hads:whole-dashboard',
-      name: 'Whole Dashboard',
-      kind: 'Full dashboard',
-      domains: ['light'],
-      downloadUrl: 'https://hads.example/dashboards/whole.json',
-      owned: true,
-    },
-  ];
-
-  const matches = getCompatibleHadsCardsForEntity('light.kitchen', listings);
-  assert.deepEqual(matches.map((option) => option.type), [
-    'hads:free-light-switch',
-    'hads:light-control',
-  ]);
-  assert.ok(matches.every((option) => option.hads));
-
-  const combined = getCompatibleCardsForEntity('light.kitchen', { state: 'on' }, [], listings);
-  assert.deepEqual(combined.slice(0, 3).map((option) => option.type), [
-    'light',
-    'hads:free-light-switch',
-    'hads:light-control',
-  ]);
-});
-
-test('available HADS cards use an Add action while dashboards keep a download action', () => {
-  assert.deepEqual(
-    getHadsImportAction({ kind: 'Card', owned: true }),
-    { icon: 'mdi:plus', label: 'Add' },
-  );
-  assert.deepEqual(
-    getHadsImportAction({ kind: 'Card', owned: true }, true),
-    { icon: 'mdi:plus', label: 'Adding...' },
-  );
-  assert.deepEqual(
-    getHadsImportAction({ kind: 'Full dashboard', owned: true }),
-    { icon: 'mdi:download', label: 'Download dashboard' },
-  );
-});
-
-test('HADS listing links resolve to the exact store page', () => {
-  assert.equal(
-    resolveHadsListingUrl({ externalUrl: 'https://hads.smarti.dev/d/room-card-plus' }),
-    'https://hads.smarti.dev/d/room-card-plus',
-  );
-  assert.equal(
-    resolveHadsListingUrl({ externalUrl: '/d/room-card-plus' }, 'https://example.test/'),
-    'https://example.test/d/room-card-plus',
-  );
-  assert.equal(
-    resolveHadsListingUrl({ slug: 'room card plus' }, 'https://example.test'),
-    'https://example.test/d/room%20card%20plus',
-  );
-});
-
-test('a HADS single-card package is extracted and rebound to the selected entity', () => {
-  const payload = {
-    kind: 'ddc-card',
-    entry: {
-      card: {
-        type: 'custom:ddc-html-card',
-        entity: 'light.demo',
-        html: '<button data-entity="light.demo">{{ entity }}</button>',
-        js: "const light = 'light.demo'; const temperature = 'sensor.room_temperature';",
-        neo_light_config: {
-          entity_id: 'light.demo',
-          fallback_sensor: 'sensor.room_temperature',
-        },
-      },
-    },
-  };
-
-  const extracted = extractHadsCardConfig(payload);
-  const bound = bindEntityToHadsCardConfig(extracted, 'light.kitchen', { domains: ['light'] });
-
-  assert.equal(bound.type, 'custom:ddc-html-card');
-  assert.equal(bound.entity, 'light.kitchen');
-  assert.match(bound.html, /data-entity="light\.kitchen"/);
-  assert.match(bound.html, />light\.kitchen</);
-  assert.match(bound.js, /light\.kitchen/);
-  assert.match(bound.js, /sensor\.room_temperature/);
-  assert.equal(bound.neo_light_config.entity_id, 'light.kitchen');
-  assert.equal(bound.neo_light_config.fallback_sensor, 'sensor.room_temperature');
-  assert.equal(payload.entry.card.entity, 'light.demo');
-});
-
 test('the selected compatible card receives the chosen entity', () => {
   assert.deepEqual(
     buildEntityCardConfig('light.kitchen', 'button', { state: 'on' }),
@@ -347,19 +225,6 @@ test('the picker exposes a searchable two-step By entity source', async () => {
   assert.match(source, /Search entities by name, ID, domain, or state/);
   assert.match(source, /Search compatible cards/);
   assert.match(source, /Choose a card/);
-  assert.match(source, /getCompatibleCardsForEntity\(selectedEntityId, selectedState, installedCustomCards, hadsItems\)/);
-  assert.match(source, /bindEntityToHadsCardConfig\(cardConfig, entityAtSelection, listing\)/);
-  assert.match(source, /HADS card ready to customize/);
-});
-
-test('the HADS info button opens the listing while the card preview keeps inline details', async () => {
-  const source = await readFile(
-    new URL('../src/cards/smart-card-picker.js', import.meta.url),
-    'utf8',
-  );
-
-  assert.match(source, /class="hads-store-card-preview" data-hads-detail-type=/);
-  assert.match(source, /class="hads-store-card-action ghost hads-store-card-detail" data-hads-open-type=/);
-  assert.match(source, /querySelectorAll\('\[data-hads-open-type\]'\)/);
-  assert.match(source, /openHadsListing\(item\)/);
+  assert.match(source, /getCompatibleCardsForEntity\(selectedEntityId, selectedState, installedCustomCards\)/);
+  assert.doesNotMatch(source, /hads\.smarti\.dev/i);
 });

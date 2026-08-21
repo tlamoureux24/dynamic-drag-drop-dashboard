@@ -261,7 +261,7 @@ const layoutHistoryMethods = {
     this._markDirty?.('toolbar-autosave');
     try {
       this.dispatchEvent(new CustomEvent('config-changed', {
-        detail: { config: { type: 'custom:drag-and-drop-card', ...(this._config || {}) } },
+        detail: { config: { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) } },
         bubbles: true,
         composed: true,
       }));

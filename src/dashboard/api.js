@@ -114,7 +114,7 @@ const dashboardApiMethods = {
     // If storage_key changed, push it into HA editor immediately
      if (this._isInHaEditorPreview()) {
        try {
-         const updatedCfg = { type: 'custom:drag-and-drop-card', ...(this._config || {}) };
+         const updatedCfg = { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) };
          this.dispatchEvent(new CustomEvent('config-changed', {
            detail: { config: updatedCfg },
            bubbles: true,

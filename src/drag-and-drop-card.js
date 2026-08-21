@@ -1,7 +1,7 @@
 /*!
- * Drag & Drop Card (Proprietary)
- * Copyright (c) 2025 <SMARTI AS>
- * Use is governed by EULA.md. Third-party notices: THIRD_PARTY_NOTICES.md
+ * Dynamic Drag & Drop Dashboard
+ * Derived from the MIT-licensed Drag & Drop Card project.
+ * License and attribution: LICENSE, THIRD_PARTY_NOTICES.md, and UPSTREAM.md.
  */
 
 /*
@@ -24,14 +24,14 @@ if (!window.jsyaml) window.jsyaml = jsyaml;
 // pretty console banner + version
 const VERSION = __VERSION__;
 console.info(
-  `%c drag-and-drop-card %c v${VERSION} `,
+  `%c dynamic-drag-drop-dashboard %c v${VERSION} `,
   'color:#fff;background:#03a9f4;font-weight:700;padding:2px 6px;border-radius:3px 0 0 3px',
   'color:#03303a;background:#bdeaff;padding:2px 6px;border-radius:0 3px 3px 0'
 );
 
 // drag-and-drop-card.js
 /* eslint-disable no-console */
-console.info('%c drag-and-drop-card loaded', 'color:#03a9f4;font-weight:700;');
+console.info('%c dynamic-drag-drop-dashboard loaded', 'color:#03a9f4;font-weight:700;');
 
 class DragAndDropCard extends HTMLElement {
   __booting = false;

@@ -41,7 +41,6 @@ const dashboardShellBindingMethods = {
     this.storeBadge    = this.shadowRoot.querySelector('#storeBadge');
     this.exportBtn     = this.shadowRoot.querySelector('#exportBtn');
     this.importBtn     = this.shadowRoot.querySelector('#importBtn');
-    this.exploreBtn    = this.shadowRoot.querySelector('#exploreBtn');
     this.applyLayoutBtn= this.shadowRoot.querySelector('#applyLayoutBtn');
     this.toolbarAutoSaveBtn = this.shadowRoot.querySelector('#toolbarAutoSaveBtn');
     this.editorThemeBtn = this.shadowRoot.querySelector('#editorThemeBtn');
@@ -160,10 +159,6 @@ const dashboardShellBindingMethods = {
         this._closeToolbarDropdown_?.();
         this._openDashboardSettings();
       });
-      this.exploreBtn?.addEventListener('click', () =>
-        window.open('https://hads.smarti.dev/', '_blank', 'noopener,noreferrer')
-      );
-
       this.__saveShortcutHandler = (e) => {
         if (!this.editMode) return;
         if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {

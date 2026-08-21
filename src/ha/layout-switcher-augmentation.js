@@ -35,7 +35,7 @@ export function installDdcAugmentationV6() {
   }
   function _scanDdcCards(cfg) {
     const hits = [];
-    const push = (view, path, obj) => { if (obj?.type === 'custom:drag-and-drop-card') hits.push({ view, path: [...path], card: obj }); };
+    const push = (view, path, obj) => { if (['custom:drag-and-drop-card', 'custom:dynamic-drag-drop-dashboard'].includes(obj?.type)) hits.push({ view, path: [...path], card: obj }); };
     const visit = (node, viewIdx, path) => {
       if (!node) return;
       if (Array.isArray(node)) { node.forEach((n, i) => visit(n, viewIdx, path.concat(i))); return; }
@@ -157,7 +157,7 @@ async function _persistOptionsToYaml(opts, {
   }
 
   // Build patch WITHOUT storage_key so we don't overwrite per-card keys
-  const patch = { type: 'custom:drag-and-drop-card', ...(opts || {}) };
+  const patch = { type: 'custom:dynamic-drag-drop-dashboard', ...(opts || {}) };
   if ('storage_key' in patch)  delete patch.storage_key;
   if ('storageKey'  in patch)  delete patch.storageKey;
   if (patch?.options) {

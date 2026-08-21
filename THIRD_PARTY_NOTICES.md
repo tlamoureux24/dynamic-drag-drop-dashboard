@@ -2,6 +2,8 @@
 
 This project bundles the following libraries:
 
+- **Drag-And-Drop-Card** — MIT License. Copyright (c) Prosono and contributors.
+- **Drag-And-Drop-Card-Backend** — MIT License. Copyright (c) Prosono and contributors.
 - **interactjs** — MIT License. Copyright (c) Taye Adeyemi.
 - **js-yaml** — MIT License. Copyright (c) 2011-2021 Vitaly Puzrin and others.
 

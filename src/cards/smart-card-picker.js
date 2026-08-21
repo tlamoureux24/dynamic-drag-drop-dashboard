@@ -310,135 +310,6 @@ export function getCompatibleCustomCardsForEntity(entityId, registeredCards = []
     .map(({ matchPriority, ...card }) => card);
 }
 
-export function isFreeHadsListing(item = {}) {
-  const price = String(item?.price || '').trim().toLowerCase();
-  return !price || price === 'free' || price === 'open' || /^0(?:[.,]00)?(?:\s+[a-z]{3})?$/.test(price);
-}
-
-export function resolveHadsListingUrl(item = {}, storeBase = 'https://hads.smarti.dev') {
-  const base = String(storeBase || 'https://hads.smarti.dev').trim().replace(/\/+$/, '');
-  const externalUrl = String(item?.externalUrl || item?.external_url || item?.url || '').trim();
-  if (/^https?:\/\//i.test(externalUrl)) return externalUrl;
-  if (externalUrl) return `${base}${externalUrl.startsWith('/') ? '' : '/'}${externalUrl}`;
-  const slug = String(item?.slug || '').trim();
-  return slug ? `${base}/d/${encodeURIComponent(slug)}` : `${base}/explore`;
-}
-
-export function getHadsImportAction(item = {}, busy = false) {
-  const isDashboard = String(item?.kind || '').toLowerCase().includes('dashboard');
-  if (isDashboard) {
-    return {
-      icon: 'mdi:download',
-      label: busy ? 'Downloading...' : 'Download dashboard',
-    };
-  }
-  return {
-    icon: 'mdi:plus',
-    label: busy ? 'Adding...' : 'Add',
-  };
-}
-
-function declaredHadsDomains(item = {}) {
-  const raw = item.domains ?? item.entityDomains ?? item.entity_domains ?? item.domain;
-  const values = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-  return values
-    .flatMap((value) => String(value || '').split(','))
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function getCompatibleHadsCardsForEntity(entityId, listings = []) {
-  const domain = entityDomain(entityId);
-  const tokens = CUSTOM_CARD_DOMAIN_TOKENS[domain] || [];
-  const seen = new Set();
-  return (Array.isArray(listings) ? listings : [])
-    .map((item) => {
-      const type = String(item?.type || '').trim();
-      const kind = String(item?.kind || 'Card').toLowerCase();
-      if (!type || seen.has(type) || kind.includes('dashboard')) return null;
-      if (!item?.downloadUrl && !item?.cardConfig) return null;
-      if (!item?.owned && !isFreeHadsListing(item)) return null;
-
-      const domains = declaredHadsDomains(item);
-      const searchable = [item?.slug, item?.name, item?.description, item?.badge]
-        .map((value) => String(value || '').toLowerCase().replace(/_/g, '-'))
-        .join(' ');
-      const explicitMatch = domains.includes('*') || domains.includes(domain);
-      const inferredMatch = !domains.length && tokens.some((token) => (
-        searchable.includes(`${token}-`)
-        || searchable.includes(`${token} `)
-        || searchable.includes(`${token}s`)
-      ));
-      if (!explicitMatch && !inferredMatch) return null;
-
-      seen.add(type);
-      return {
-        type,
-        name: item?.name || item?.slug || 'HADS card',
-        icon: item?.icon || 'mdi:storefront-outline',
-        reason: item?.owned
-          ? `Available in your HADS library for ${domain.replace(/_/g, ' ')} entities.`
-          : `Free HADS card matched to ${domain.replace(/_/g, ' ')} entities.`,
-        recommended: false,
-        hads: true,
-        hadsItem: item,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-}
-
-export function extractHadsCardConfig(payload = null) {
-  if (!payload || typeof payload !== 'object') return null;
-  const config = payload?.entry?.card
-    || payload?.card?.card
-    || payload?.card_config
-    || payload?.cardConfig
-    || (payload?.type && !String(payload.type).startsWith('hads:') ? payload : null);
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
-  try { return JSON.parse(JSON.stringify(config)); } catch { return { ...config }; }
-}
-
-export function bindEntityToHadsCardConfig(config = null, entityId = '', listing = {}) {
-  const entity = String(entityId || '').trim();
-  if (!config || typeof config !== 'object' || !entity) return config;
-  const selectedDomain = entityDomain(entity);
-  const supportedDomains = new Set([
-    selectedDomain,
-    ...declaredHadsDomains(listing).filter((domain) => domain !== '*'),
-  ]);
-  const entityPattern = /\b[a-z_][a-z0-9_]*\.[a-z0-9_]+\b/gi;
-  let replacements = 0;
-
-  const replaceString = (value, key = '') => {
-    let next = String(value || '');
-    next = next.replace(/__ENTITY__|\{\{\s*entity\s*\}\}/g, () => {
-      replacements += 1;
-      return entity;
-    });
-    next = next.replace(entityPattern, (candidate) => {
-      const candidateDomain = entityDomain(candidate);
-      const directEntityField = key === 'entity' || key === 'entity_id';
-      if (!directEntityField && !supportedDomains.has(candidateDomain)) return candidate;
-      replacements += 1;
-      return entity;
-    });
-    return next;
-  };
-  const walk = (value, key = '') => {
-    if (typeof value === 'string') return replaceString(value, key);
-    if (Array.isArray(value)) return value.map((entry) => walk(entry, key));
-    if (!value || typeof value !== 'object') return value;
-    return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, walk(childValue, childKey)]));
-  };
-
-  const bound = walk(config);
-  if (!replacements && Object.prototype.hasOwnProperty.call(bound, 'entity')) {
-    bound.entity = entity;
-  }
-  return bound;
-}
-
 function entityDomain(entityId = '') {
   return String(entityId || '').trim().split('.')[0].toLowerCase();
 }
@@ -471,7 +342,7 @@ export function getRecommendedCardForEntity(entityId, entityState = null) {
   };
 }
 
-export function getCompatibleCardsForEntity(entityId, entityState = null, registeredCustomCards = [], hadsListings = []) {
+export function getCompatibleCardsForEntity(entityId, entityState = null, registeredCustomCards = []) {
   const domain = entityDomain(entityId);
   const recommendation = getRecommendedCardForEntity(entityId, entityState);
   const domainTypes = DOMAIN_ENTITY_CARD_TYPES[domain] || [];
@@ -502,8 +373,7 @@ export function getCompatibleCardsForEntity(entityId, entityState = null, regist
     };
   });
   const customCards = getCompatibleCustomCardsForEntity(entityId, registeredCustomCards);
-  const hadsCards = getCompatibleHadsCardsForEntity(entityId, hadsListings);
-  return [nativeCards[0], ...customCards, ...hadsCards, ...nativeCards.slice(1)]
+  return [nativeCards[0], ...customCards, ...nativeCards.slice(1)]
     .filter((card, index, cards) => card && cards.findIndex((item) => item?.type === card.type) === index);
 }
 
@@ -680,355 +550,6 @@ const smartPickerMethods = {
         {type:'alarm-panel',       name:'Alarm panel',       icon:'mdi:shield-home-outline'},
         {type:'area',              name:'Area',              icon:'mdi:map-marker'},
       ]},
-    ];
-  },
-
-
-  _hadsStoreBase_() {
-    return String(this._config?.hads_store_base || 'https://hads.smarti.dev').replace(/\/+$/, '');
-  },
-
-
-  _hadsApiBase_() {
-    return String(this._config?.hads_api_base || `${this._hadsStoreBase_()}/api/ddc`).replace(/\/+$/, '');
-  },
-
-
-  _hadsSessionStorageKey_() {
-    return 'ddc_hads_session_v1';
-  },
-
-
-  _hadsOwnedStorageKey_() {
-    return 'ddc_hads_owned_v1';
-  },
-
-
-  _getHadsOwnedKeys_() {
-    try {
-      const raw = localStorage.getItem(this._hadsOwnedStorageKey_());
-      const list = JSON.parse(raw || '[]');
-      return new Set(Array.isArray(list) ? list.map((entry) => String(entry || '').trim()).filter(Boolean) : []);
-    } catch {
-      return new Set();
-    }
-  },
-
-
-  _rememberHadsOwned_(item = {}) {
-    const keys = this._getHadsOwnedKeys_();
-    [item.slug, item.type, item.externalUrl]
-      .map((entry) => String(entry || '').trim())
-      .filter(Boolean)
-      .forEach((entry) => keys.add(entry));
-    try { localStorage.setItem(this._hadsOwnedStorageKey_(), JSON.stringify(Array.from(keys))); } catch {}
-  },
-
-
-  _applyHadsOwnedCache_(items = [], options = {}) {
-    const includeLocal = !!options.includeLocal;
-    const trustOwned = options.trustOwned !== false;
-    const keys = includeLocal ? this._getHadsOwnedKeys_() : new Set();
-    return (Array.isArray(items) ? items : []).map((item) => {
-      const owned = (trustOwned && !!item?.owned)
-        || (includeLocal && keys.has(String(item?.slug || '').trim()))
-        || (includeLocal && keys.has(String(item?.type || '').trim()))
-        || (includeLocal && keys.has(String(item?.externalUrl || '').trim()));
-      return owned === !!item?.owned ? item : { ...item, owned };
-    });
-  },
-
-
-  _getHadsSession_() {
-    try {
-      const raw = localStorage.getItem(this._hadsSessionStorageKey_());
-      if (!raw) return null;
-      const session = JSON.parse(raw);
-      const expiresAt = Number(session?.expires_at || session?.expiresAt || 0);
-      if (expiresAt && expiresAt < Date.now() + 30000) {
-        localStorage.removeItem(this._hadsSessionStorageKey_());
-        return null;
-      }
-      return session?.access_token ? session : null;
-    } catch {
-      return null;
-    }
-  },
-
-
-  _setHadsSession_(session = null) {
-    try {
-      if (!session?.access_token) {
-        localStorage.removeItem(this._hadsSessionStorageKey_());
-        return null;
-      }
-      const expiresAt = Number(session.expires_at || session.expiresAt || 0)
-        || (Date.now() + Math.max(1, Number(session.expires_in || session.expiresIn || 86400)) * 1000);
-      const normalized = {
-        ...session,
-        expires_at: expiresAt,
-        user: session.user || session.account || null,
-      };
-      localStorage.setItem(this._hadsSessionStorageKey_(), JSON.stringify(normalized));
-      return normalized;
-    } catch {
-      return null;
-    }
-  },
-
-
-  _clearHadsSession_() {
-    try { localStorage.removeItem(this._hadsSessionStorageKey_()); } catch {}
-  },
-
-
-  async _hadsFetchJson_(path, options = {}) {
-    const url = /^https?:\/\//i.test(String(path || ''))
-      ? String(path)
-      : `${this._hadsApiBase_()}${String(path || '').startsWith('/') ? '' : '/'}${path || ''}`;
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutMs = Math.max(1000, Number(options.timeoutMs || 6500));
-    const timer = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
-    const session = this._getHadsSession_();
-    const headers = {
-      Accept: 'application/json',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      ...(options.headers || {}),
-    };
-    try {
-      const res = await fetch(url, {
-        method: options.method || 'GET',
-        mode: 'cors',
-        credentials: options.credentials || 'omit',
-        cache: options.cache || 'no-store',
-        signal: controller?.signal,
-        headers,
-        body: options.body ? JSON.stringify(options.body) : undefined,
-      });
-      const text = await res.text();
-      let json = null;
-      try { json = text ? JSON.parse(text) : null; } catch {}
-      if (!res.ok) {
-        const err = new Error(json?.message || json?.error || `HADS API ${res.status}`);
-        err.status = res.status;
-        err.payload = json;
-        throw err;
-      }
-      return json;
-    } finally {
-      if (timer) window.clearTimeout(timer);
-    }
-  },
-
-
-  _normalizeHadsListing_(entry = {}) {
-    const storeBase = this._hadsStoreBase_();
-    const absolute = (value) => {
-      const text = String(value || '').trim();
-      if (!text) return '';
-      if (/^https?:\/\//i.test(text)) return text;
-      return `${storeBase}${text.startsWith('/') ? '' : '/'}${text}`;
-    };
-    const slug = String(entry.slug || entry.id || '').trim();
-    const title = entry.name || entry.title || entry.label || slug || 'HADS listing';
-    const kindRaw = String(entry.kind || entry.type || 'card').toLowerCase();
-    const kind = kindRaw.includes('dashboard') ? 'Full dashboard' : 'Card';
-    const rawPrice = entry.price;
-    const priceLabel = rawPrice?.label
-      || entry.price_label
-      || (typeof rawPrice === 'string' || typeof rawPrice === 'number' ? String(rawPrice) : '')
-      || (entry.is_free === false ? 'Paid' : 'Free');
-    return {
-      type: `hads:${slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-      slug,
-      name: title,
-      icon: entry.icon || (kind === 'Full dashboard' ? 'mdi:view-dashboard-outline' : 'mdi:storefront-outline'),
-      image: absolute(entry.image_url || entry.image || entry.thumbnail_url || entry.thumbnail),
-      kind,
-      price: priceLabel,
-      description: entry.description || entry.summary || '',
-      badge: entry.badge || entry.package_label || '',
-      externalUrl: absolute(entry.url || entry.external_url || (slug ? `/d/${slug}` : '/explore')),
-      downloadUrl: absolute(entry.download_url || entry.package_url || ''),
-      domains: entry.domains
-        ?? entry.entity_domains
-        ?? entry.entityDomains
-        ?? entry.domain
-        ?? entry.compatibility?.domains
-        ?? [],
-      cardConfig: entry.card_config || entry.cardConfig || null,
-      owned: !!entry.owned,
-      requiresAuth: !!entry.requires_auth,
-      source: 'HADS',
-    };
-  },
-
-
-  async _loadHadsMarketplaceCatalog_() {
-    const payload = await this._hadsFetchJson_('/catalog?client=drag-and-drop-card');
-    const listings = Array.isArray(payload)
-      ? payload
-      : (Array.isArray(payload?.listings) ? payload.listings : []);
-    return listings.map((entry) => this._normalizeHadsListing_(entry)).filter((entry) => entry.name && entry.externalUrl);
-  },
-
-
-  async _startHadsDeviceLogin_() {
-    const start = await this._hadsFetchJson_('/auth/device', {
-      method: 'POST',
-      body: {
-        client: 'drag-and-drop-card',
-        origin: window.location?.origin || '',
-        location: window.location?.href || '',
-      },
-    });
-    const verificationUrl = start?.verification_uri_complete || start?.verification_url || start?.verification_uri;
-    if (verificationUrl) {
-      try { window.open(verificationUrl, '_blank', 'noopener,noreferrer'); } catch {}
-    }
-    const deviceCode = start?.device_code || start?.deviceCode;
-    if (!deviceCode) throw new Error('HADS login did not return a device code.');
-    const expiresIn = Math.max(30, Number(start?.expires_in || start?.expiresIn || 600));
-    const intervalMs = Math.max(1500, Number(start?.interval || 3) * 1000);
-    const expiresAt = Date.now() + expiresIn * 1000;
-    while (Date.now() < expiresAt) {
-      await new Promise((resolve) => window.setTimeout(resolve, intervalMs));
-      try {
-        const token = await this._hadsFetchJson_('/auth/device/token', {
-          method: 'POST',
-          body: { device_code: deviceCode },
-          timeoutMs: Math.min(10000, intervalMs + 5000),
-        });
-        if (token?.access_token) return this._setHadsSession_(token);
-      } catch (err) {
-        const code = String(err?.payload?.error || err?.message || '').toLowerCase();
-        if (err?.status === 428 || code.includes('pending') || code.includes('authorization_pending')) continue;
-        throw err;
-      }
-    }
-    throw new Error('HADS login timed out.');
-  },
-
-
-  _hadsMarketplaceCatalog_() {
-    const base = this._hadsStoreBase_();
-    const asset = (path) => `${base}${path}`;
-    const item = ({ slug, name, icon, image, kind = 'Card', price = 'Free', description = '', badge = '', domains = [] }) => ({
-      type: `hads:${slug}`,
-      name,
-      icon,
-      image: image ? asset(image) : '',
-      kind,
-      price,
-      description,
-      badge,
-      domains,
-      externalUrl: `${base}/d/${slug}`,
-      source: 'HADS',
-    });
-    return [
-      item({
-        slug: 'hads-weather-cards',
-        name: 'HADS Weather Cards',
-        icon: 'mdi:weather-partly-cloudy',
-        image: '/static/uploads/c325643dd664491c99fa923e5a533bdc.png',
-        price: '1.99 USD',
-        domains: ['weather'],
-        description: 'Weather-focused dashboard cards from the HADS marketplace.',
-      }),
-      item({
-        slug: 'hads-charts-card',
-        name: 'HADS Charts Card',
-        icon: 'mdi:chart-line',
-        image: '/static/uploads/b18462d400744d32aac3256b08588161.png',
-        price: '1.99 USD',
-        domains: ['sensor', 'number', 'input_number'],
-        description: 'Chart and graph designs for Home Assistant dashboards.',
-      }),
-      item({
-        slug: 'hads-switches',
-        name: 'HADS Switches',
-        icon: 'mdi:toggle-switch-outline',
-        image: '/static/uploads/d0c8ea5a6efc47f3837527a3a56f4a38.gif',
-        price: '1.99 USD',
-        domains: ['switch', 'input_boolean', 'light'],
-        description: 'Switch controls and status widgets built for Drag & Drop Card.',
-      }),
-      item({
-        slug: 'battery-companion-card',
-        name: 'Battery Companion Card',
-        icon: 'mdi:battery-heart-outline',
-        image: '/static/uploads/9400784f03c84272be2fc3f0b9c17fa0.png',
-        domains: ['sensor', 'binary_sensor'],
-        description: 'Battery overview and low-battery helper card.',
-      }),
-      item({
-        slug: 'hads-gauge-card',
-        name: 'HADS Gauge Card',
-        icon: 'mdi:gauge',
-        image: '/static/uploads/8ccbdb242d4541c09643247f74415b0f.png',
-        domains: ['sensor', 'number', 'input_number'],
-        description: 'Configurable gauge card for numeric Home Assistant values.',
-      }),
-      item({
-        slug: 'the-starter-dashboard',
-        name: 'The Starter Dashboard',
-        icon: 'mdi:view-dashboard-outline',
-        image: '/static/uploads/7b83aeab67274dbba8e1aa14fd0b1149.png',
-        kind: 'Full dashboard',
-        description: 'A complete starter dashboard made with Drag & Drop Card.',
-      }),
-      item({
-        slug: 'simple-media-player-card',
-        name: 'Simple Media Player Card',
-        icon: 'mdi:play-circle-outline',
-        image: '/static/uploads/b47a7a18a48842b0b5433dc77689052c.png',
-        domains: ['media_player'],
-        description: 'Responsive media player card with playback controls.',
-      }),
-      item({
-        slug: 'who-is-home-card',
-        name: 'Person Card',
-        icon: 'mdi:account-group-outline',
-        image: '/static/uploads/68f649137c8b45ddab0335ae03ad8c08.png',
-        domains: ['person', 'device_tracker'],
-        description: 'Presence and people-at-home card.',
-      }),
-      item({
-        slug: 'battery-overview-card',
-        name: 'Battery Overview Card',
-        icon: 'mdi:battery-charging-70',
-        image: '/static/uploads/bdeaad1c21e2435d8621047635e66ea1.png',
-        badge: '9+ custom cards',
-        domains: ['sensor', 'binary_sensor'],
-        description: 'Battery overview package using multiple helper cards.',
-      }),
-      item({
-        slug: 'light-control-card',
-        name: 'Light Control Card',
-        icon: 'mdi:lightbulb-group-outline',
-        image: '/static/uploads/9b5771a3829941b6a6b70b817131a9f5.png',
-        badge: '5 custom cards',
-        domains: ['light'],
-        description: 'Light controls and room lighting layout.',
-      }),
-      item({
-        slug: 'area-overview-card',
-        name: 'Area Overview Card',
-        icon: 'mdi:home-map-marker',
-        image: '/static/uploads/2bfb0bc08fa441c790b02b552a57eb0b.png',
-        badge: '5 custom cards',
-        description: 'Area overview package for grouped room dashboards.',
-      }),
-      item({
-        slug: 'hads-clock-card',
-        name: 'HADS - Clock Card',
-        icon: 'mdi:clock-digital',
-        image: '/static/uploads/80a9febcf44144b182e7ee795b1229b4.gif',
-        price: '1.99 USD',
-        description: 'Clock card from the HADS marketplace.',
-      }),
     ];
   },
 
@@ -2233,9 +1754,6 @@ const smartPickerMethods = {
             <button type="button" class="picker-mode-tab picker-mode-tab--entities" id="pickerEntitiesTab" role="tab" aria-selected="false">
               <ha-icon icon="mdi:home-search-outline"></ha-icon><span>By entity</span>
             </button>
-            <button type="button" class="picker-mode-tab picker-mode-tab--hads" id="pickerHadsTab" role="tab" aria-selected="false" title="HADS - Home Assistant Dashboard Store" aria-label="HADS - Home Assistant Dashboard Store">
-              <ha-icon icon="mdi:storefront-outline"></ha-icon><span>HADS</span>
-            </button>
           </div>
           <div class="picker-search-wrap">
             <input id="search" class="picker-search" placeholder="Search cards (name or type)…" aria-label="search">
@@ -2249,7 +1767,6 @@ const smartPickerMethods = {
           </div>
         </div>
         <div id="layoutGrid" class="layout">
-          <div class="pane hads-store-pane" id="hadsStorePane" hidden></div>
           <div class="pane" id="leftPane"></div>
           <div class="pane" id="rightPane">
             <div class="rightGrid">
@@ -2354,8 +1871,6 @@ const smartPickerMethods = {
     const searchWrap = modal.querySelector('.picker-search-wrap');
     const pickerCardsTab = modal.querySelector('#pickerCardsTab');
     const pickerEntitiesTab = modal.querySelector('#pickerEntitiesTab');
-    const pickerHadsTab = modal.querySelector('#pickerHadsTab');
-    const hadsStorePane = modal.querySelector('#hadsStorePane');
     const cardHost = modal.querySelector('#cardHost');
     const editorHost = modal.querySelector('#editorHost');
     const editorSpin = modal.querySelector('#editorSpin');
@@ -2374,7 +1889,6 @@ const smartPickerMethods = {
     const pickerFootnote = modal.querySelector('.picker-footnote');
     const enableCommit = (on) => {
       let allowed = !!on;
-      if (activePickerMode === 'hads') allowed = false;
       if (activePickerMode === 'entities') {
         allowed = allowed
           && !!selectedEntityId
@@ -2452,16 +1966,6 @@ const smartPickerMethods = {
         items: customItems,
       });
     }
-    let hadsSession = this._getHadsSession_();
-    let hadsItems = this._applyHadsOwnedCache_(this._hadsMarketplaceCatalog_(), {
-      includeLocal: !!hadsSession?.access_token,
-      trustOwned: !!hadsSession?.access_token,
-    });
-    let hadsCatalogSource = 'snapshot';
-    let hadsCatalogLoading = false;
-    let hadsCatalogLoaded = false;
-    let hadsCatalogError = '';
-    let hadsAuthBusy = false;
 
     // ---------------------------------------------------------------------------
     // UI tweaks: hide quick fill area, add selected-card headline and fave toggle
@@ -2618,380 +2122,36 @@ const smartPickerMethods = {
       '"': '&quot;',
       "'": '&#39;',
     }[ch]));
-    const filteredHadsItems = () => {
-      const q = search.value.trim().toLowerCase();
-      return hadsItems.filter((item) => !q || [
-        item.name,
-        item.kind,
-        item.price,
-        item.description,
-        item.badge,
-        item.externalUrl,
-      ].some((value) => String(value || '').toLowerCase().includes(q)));
-    };
-    const openHadsListing = (item) => {
-      try {
-        window.open(resolveHadsListingUrl(item, this._hadsStoreBase_()), '_blank', 'noopener,noreferrer');
-      } catch {}
-    };
-    const openHadsCreateUser = () => {
-      try {
-        window.open(`${this._hadsStoreBase_()}/signup`, '_blank', 'noopener,noreferrer');
-      } catch {}
-    };
-    const isFreeHadsItem = (item = {}) => isFreeHadsListing(item);
-    const shouldOfferHadsImport = (item = {}) => !!item.owned || isFreeHadsItem(item);
-    const canImportHadsItem = (item = {}) => shouldOfferHadsImport(item) && !!item.downloadUrl;
-    let selectedHadsType = '';
-    let hadsDownloadBusyType = '';
-    const selectedHadsItem = () => hadsItems.find((entry) => entry.type === selectedHadsType) || null;
-    const hadsFileNameForItem = (item = {}) => {
-      const slug = String(item.slug || item.name || 'hads-listing')
-        .replace(/[^a-z0-9]+/gi, '_')
-        .replace(/^_+|_+$/g, '')
-        .toLowerCase() || 'hads_listing';
-      return `hads_${slug}.json`;
-    };
-    const downloadAndImportHadsListing = async (item) => {
-      if (!item) return;
-      if (!shouldOfferHadsImport(item)) {
-        openHadsListing(item);
-        return;
-      }
-      if (!hadsSession?.access_token) {
-        selectedHadsType = item.type;
-        hadsCatalogError = 'Sign in to HADS to add cards from Drag & Drop Card. Free listings can still be downloaded directly on the HADS website.';
-        renderHadsStore();
-        try { await connectHads(); } catch {}
-        return;
-      }
-      if (!item.downloadUrl) {
-        selectedHadsType = item.type;
-        hadsCatalogError = 'HADS has not exposed a package download for this listing yet. Refresh after signing in, or open it on HADS.';
-        renderHadsStore();
-        try { await refreshHadsCatalog({ force: true }); } catch {}
-        return;
-      }
-      if (hadsDownloadBusyType) return;
-      hadsDownloadBusyType = item.type;
-      hadsCatalogError = '';
-      renderHadsStore();
-      try {
-        const payload = await this._hadsFetchJson_(item.downloadUrl, { timeoutMs: 15000 });
-        if (!payload || typeof payload !== 'object') throw new Error('HADS returned an invalid package.');
-        let imported = false;
-        if (this._isSingleCardImportPayload_(payload)) {
-          imported = await this._importSingleCardPayload_(payload, { usePickerPlacement: true });
-        } else {
-          this._downloadJsonFile_(hadsFileNameForItem(item), payload);
-          this._toast?.('Dashboard package downloaded. Use Import to replace this dashboard.');
-        }
-        if (imported) {
-          this._rememberHadsOwned_(item);
-          hadsItems = this._applyHadsOwnedCache_(hadsItems, {
-            includeLocal: !!hadsSession?.access_token,
-            trustOwned: !!hadsSession?.access_token,
-          });
-          this._toast?.('HADS card added.');
-          close();
-        }
-      } catch (err) {
-        if (err?.status === 401) {
-          hadsCatalogError = 'Connect HADS before downloading this listing.';
-        } else if (err?.status === 403) {
-          hadsCatalogError = 'This listing is not in your HADS library yet.';
-          openHadsListing(item);
-        } else {
-          hadsCatalogError = err?.message || 'Could not download this HADS listing.';
-        }
-      } finally {
-        hadsDownloadBusyType = '';
-        renderHadsStore();
-      }
-    };
-    const refreshHadsCatalog = async ({ force = false } = {}) => {
-      if (hadsCatalogLoading || (hadsCatalogLoaded && !force)) return;
-      hadsCatalogLoading = true;
-      hadsCatalogError = '';
-      if (activePickerMode === 'hads') renderHadsStore();
-      try {
-        const apiItems = await this._loadHadsMarketplaceCatalog_();
-        if (apiItems.length) {
-          hadsItems = this._applyHadsOwnedCache_(apiItems, {
-            includeLocal: !!hadsSession?.access_token,
-            trustOwned: !!hadsSession?.access_token,
-          });
-          hadsCatalogSource = 'live';
-          hadsCatalogLoaded = true;
-        }
-      } catch (err) {
-        hadsCatalogSource = 'snapshot';
-        hadsCatalogError = err?.status === 404
-          ? 'Live HADS API is not enabled yet. Showing the bundled store snapshot.'
-          : 'Could not reach the live HADS API. Showing the bundled store snapshot.';
-      } finally {
-        hadsCatalogLoading = false;
-        if (activePickerMode === 'hads') renderHadsStore();
-        if (activePickerMode === 'entities') renderEntityPicker();
-      }
-    };
-    const connectHads = async () => {
-      if (hadsAuthBusy) return;
-      hadsAuthBusy = true;
-      hadsCatalogError = '';
-      renderHadsStore();
-      try {
-        hadsSession = await this._startHadsDeviceLogin_();
-        this._toast?.('HADS connected.');
-        await refreshHadsCatalog({ force: true });
-      } catch (err) {
-        hadsCatalogError = err?.status === 404
-          ? 'HADS login API is not enabled yet. Add the API endpoints in the store, then this button will connect directly.'
-          : (err?.message || 'Could not connect to HADS yet.');
-        if (err?.status === 404 || err?.status === 405) {
-          try { window.open(`${this._hadsStoreBase_()}/login?client=drag-and-drop-card`, '_blank', 'noopener,noreferrer'); } catch {}
-        }
-      } finally {
-        hadsAuthBusy = false;
-        renderHadsStore();
-        if (activePickerMode === 'entities') renderEntityPicker();
-      }
-    };
-    const disconnectHads = () => {
-      this._clearHadsSession_();
-      hadsSession = null;
-      hadsCatalogSource = 'snapshot';
-      hadsItems = this._applyHadsOwnedCache_(this._hadsMarketplaceCatalog_(), {
-        includeLocal: false,
-        trustOwned: false,
-      });
-      this._toast?.('HADS disconnected.');
-      renderHadsStore();
-    };
-    const renderHadsStore = () => {
-      if (!hadsStorePane) return;
-      const items = filteredHadsItems();
-      const hasHadsAccount = !!hadsSession?.access_token;
-      const ownedItems = hasHadsAccount ? items.filter((item) => item.owned) : [];
-      const marketplaceItems = hasHadsAccount
-        ? items.filter((item) => !item.owned)
-        : items.map((item) => (item?.owned ? { ...item, owned: false } : item));
-      const storeBase = this._hadsStoreBase_();
-      const detailItem = selectedHadsItem();
-      const renderHadsCard = (item) => {
-        const importAction = getHadsImportAction(item, hadsDownloadBusyType === item.type);
-        return `
-          <article class="hads-store-card${selectedHadsType === item.type ? ' is-selected' : ''}" data-hads-type="${escapePickerHtml(item.type)}">
-            <button type="button" class="hads-store-card-preview" data-hads-detail-type="${escapePickerHtml(item.type)}">
-              <span class="hads-store-image">
-                ${item.image ? `<img src="${escapePickerHtml(item.image)}" alt="${escapePickerHtml(item.name)}" loading="lazy">` : `<ha-icon icon="${escapePickerHtml(item.icon || 'mdi:storefront-outline')}"></ha-icon>`}
-                <span class="hads-store-overlay"></span>
-              </span>
-              <span class="hads-store-copy">
-                <span class="hads-store-chips">
-                  <span>${escapePickerHtml(item.kind || 'Card')}</span>
-                  <span>${escapePickerHtml(item.price || 'Open')}</span>
-                  ${item.owned ? '<span>Owned</span>' : ''}
-                  ${item.badge ? `<span>${escapePickerHtml(item.badge)}</span>` : ''}
-                </span>
-                <strong>${escapePickerHtml(item.name)}</strong>
-                <small>${escapePickerHtml(item.description || 'Open this HADS listing.')}</small>
-              </span>
-            </button>
-            <span class="hads-store-card-actions">
-              ${shouldOfferHadsImport(item)
-                ? `<button type="button" class="hads-store-card-action primary hads-store-card-import" data-hads-type="${escapePickerHtml(item.type)}" ${hadsDownloadBusyType === item.type ? 'disabled' : ''}>
-                    <ha-icon icon="${importAction.icon}"></ha-icon><span>${importAction.label}</span>
-                  </button>`
-                : `<button type="button" class="hads-store-card-action primary hads-store-card-buy" data-hads-type="${escapePickerHtml(item.type)}">
-                    <ha-icon icon="mdi:open-in-new"></ha-icon><span>Buy</span>
-                  </button>`}
-              <button type="button" class="hads-store-card-action ghost hads-store-card-detail" data-hads-open-type="${escapePickerHtml(item.type)}" aria-label="Open ${escapePickerHtml(item.name)} in HADS" title="Open in HADS">
-                <ha-icon icon="mdi:information-outline"></ha-icon>
-              </button>
-            </span>
-          </article>
-        `;
-      };
-      const accountName = hadsSession?.user?.name || hadsSession?.user?.email || hadsSession?.account?.name || 'HADS account';
-      const accountHtml = hadsSession?.access_token
-        ? `
-          <div class="hads-store-account is-connected">
-            <span class="hads-store-account-icon"><ha-icon icon="mdi:account-check-outline"></ha-icon></span>
-            <span class="hads-store-account-copy">
-              <strong>${escapePickerHtml(accountName)}</strong>
-              <small>Connected to HADS</small>
-            </span>
-            <button type="button" class="hads-store-account-btn hads-store-library">My library</button>
-            <button type="button" class="hads-store-account-btn ghost hads-store-disconnect">Sign out</button>
-          </div>
-        `
-        : `
-          <div class="hads-store-account">
-            <span class="hads-store-account-icon"><ha-icon icon="mdi:account-plus-outline"></ha-icon></span>
-            <span class="hads-store-account-copy">
-              <strong>Connect HADS</strong>
-              <small>Sign in to unlock library and purchases.</small>
-            </span>
-            <button type="button" class="hads-store-account-btn hads-store-connect" ${hadsAuthBusy ? 'disabled' : ''}>
-              ${hadsAuthBusy ? 'Waiting...' : 'Sign in'}
-            </button>
-            <button type="button" class="hads-store-account-btn ghost hads-store-create-user">
-              Create user
-            </button>
-          </div>
-        `;
-      hadsStorePane.innerHTML = `
-        <div class="hads-store-hero">
-          <div>
-            <span class="hads-store-kicker">HADS marketplace</span>
-            <h4>Home Assistant Dashboard Store</h4>
-            <p>Browse downloadable dashboards and cards from hads.smarti.dev.</p>
-            <span class="hads-store-statusline">
-              <span>${hadsCatalogLoading ? 'Syncing live catalog...' : (hadsCatalogSource === 'live' ? 'Live catalog' : 'Snapshot catalog')}</span>
-              <button type="button" class="hads-store-refresh">${hadsCatalogLoading ? 'Syncing' : 'Refresh'}</button>
-            </span>
-          </div>
-          ${accountHtml}
-        </div>
-        ${hadsCatalogError ? `<div class="hads-store-notice"><ha-icon icon="mdi:information-outline"></ha-icon><span>${escapePickerHtml(hadsCatalogError)}</span></div>` : ''}
-        ${detailItem ? `
-          <section class="hads-store-detail" aria-label="HADS listing details">
-            <div class="hads-store-detail-media">
-              ${detailItem.image ? `<img src="${escapePickerHtml(detailItem.image)}" alt="${escapePickerHtml(detailItem.name)}" loading="lazy">` : `<ha-icon icon="${escapePickerHtml(detailItem.icon || 'mdi:storefront-outline')}"></ha-icon>`}
-            </div>
-            <div class="hads-store-detail-copy">
-              <div class="hads-store-detail-topline">
-                <span>${escapePickerHtml(detailItem.kind || 'Card')}</span>
-                <span>${escapePickerHtml(detailItem.price || 'Open')}</span>
-                ${detailItem.owned ? '<span>Owned</span>' : ''}
-                ${detailItem.badge ? `<span>${escapePickerHtml(detailItem.badge)}</span>` : ''}
-              </div>
-              <h5>${escapePickerHtml(detailItem.name)}</h5>
-              <p>${escapePickerHtml(detailItem.description || 'Open this listing on HADS for screenshots, package details and install notes.')}</p>
-              <div class="hads-store-detail-actions">
-                ${shouldOfferHadsImport(detailItem)
-                  ? `<button type="button" class="hads-store-detail-btn primary hads-store-download" ${hadsDownloadBusyType === detailItem.type ? 'disabled' : ''}>
-                      <ha-icon icon="${getHadsImportAction(detailItem, hadsDownloadBusyType === detailItem.type).icon}"></ha-icon><span>${getHadsImportAction(detailItem, hadsDownloadBusyType === detailItem.type).label}</span>
-                    </button>`
-                  : `<button type="button" class="hads-store-detail-btn primary hads-store-buy">
-                      <ha-icon icon="mdi:open-in-new"></ha-icon><span>Buy in HADS</span>
-                    </button>`}
-                <button type="button" class="hads-store-detail-btn hads-store-open-listing">
-                  <ha-icon icon="mdi:storefront-outline"></ha-icon><span>Open listing</span>
-                </button>
-                <button type="button" class="hads-store-detail-btn ghost hads-store-close-detail">
-                  <ha-icon icon="mdi:close"></ha-icon><span>Close</span>
-                </button>
-              </div>
-            </div>
-          </section>
-        ` : ''}
-        ${ownedItems.length ? `
-          <section class="hads-store-section">
-            <div class="hads-store-section-head">
-              <span>Owned cards</span>
-              <small>${ownedItems.length} ready to add</small>
-            </div>
-            <div class="hads-store-grid">${ownedItems.map(renderHadsCard).join('')}</div>
-          </section>
-        ` : ''}
-        ${marketplaceItems.length ? `
-          <section class="hads-store-section">
-            <div class="hads-store-section-head">
-              <span>${ownedItems.length ? 'Explore more' : 'Marketplace'}</span>
-              <small>${marketplaceItems.length} listings</small>
-            </div>
-            <div class="hads-store-grid">${marketplaceItems.map(renderHadsCard).join('')}</div>
-          </section>
-        ` : ''}
-        ${items.length ? '' : `
-          <div class="hads-store-empty">
-            <ha-icon icon="mdi:store-search-outline"></ha-icon>
-            <strong>No HADS listings match this search.</strong>
-          </div>
-        `}
-      `;
-      hadsStorePane.querySelector('.hads-store-refresh')?.addEventListener('click', () => refreshHadsCatalog({ force: true }));
-      hadsStorePane.querySelector('.hads-store-connect')?.addEventListener('click', connectHads);
-      hadsStorePane.querySelector('.hads-store-create-user')?.addEventListener('click', openHadsCreateUser);
-      hadsStorePane.querySelector('.hads-store-disconnect')?.addEventListener('click', disconnectHads);
-      hadsStorePane.querySelector('.hads-store-library')?.addEventListener('click', () => {
-        try { window.open(`${storeBase}/library`, '_blank', 'noopener,noreferrer'); } catch {}
-      });
-      hadsStorePane.querySelector('.hads-store-download')?.addEventListener('click', () => downloadAndImportHadsListing(detailItem));
-      hadsStorePane.querySelector('.hads-store-buy')?.addEventListener('click', () => detailItem && openHadsListing(detailItem));
-      hadsStorePane.querySelector('.hads-store-open-listing')?.addEventListener('click', () => detailItem && openHadsListing(detailItem));
-      hadsStorePane.querySelector('.hads-store-close-detail')?.addEventListener('click', () => {
-        selectedHadsType = '';
-        renderHadsStore();
-      });
-      hadsStorePane.querySelectorAll('[data-hads-detail-type]').forEach((button) => {
-        const item = hadsItems.find((entry) => entry.type === button.dataset.hadsDetailType);
-        button.addEventListener('click', () => {
-          if (!item) return;
-          selectedHadsType = item.type;
-          renderHadsStore();
-        });
-      });
-      hadsStorePane.querySelectorAll('[data-hads-open-type]').forEach((button) => {
-        const item = hadsItems.find((entry) => entry.type === button.dataset.hadsOpenType);
-        button.addEventListener('click', () => item && openHadsListing(item));
-      });
-      hadsStorePane.querySelectorAll('.hads-store-card-import').forEach((button) => {
-        const item = hadsItems.find((entry) => entry.type === button.dataset.hadsType);
-        button.addEventListener('click', () => item && downloadAndImportHadsListing(item));
-      });
-      hadsStorePane.querySelectorAll('.hads-store-card-buy').forEach((button) => {
-        const item = hadsItems.find((entry) => entry.type === button.dataset.hadsType);
-        button.addEventListener('click', () => item && openHadsListing(item));
-      });
-    };
     const setPickerMode = (modeName = 'cards') => {
       const previousMode = activePickerMode;
-      activePickerMode = modeName === 'hads' ? 'hads' : (modeName === 'entities' ? 'entities' : 'cards');
-      const hadsMode = activePickerMode === 'hads';
+      activePickerMode = modeName === 'entities' ? 'entities' : 'cards';
       const entityMode = activePickerMode === 'entities';
       if (search && previousMode !== activePickerMode) search.value = '';
-      modal.classList.toggle('hads-store-mode', hadsMode);
       modal.classList.toggle('by-entity-mode', entityMode);
-      layoutGrid?.classList?.toggle('hads-store-active', hadsMode);
       layoutGrid?.classList?.toggle('entity-card-awaiting', entityMode && !selectedEntityCardType);
-      pickerCardsTab?.classList.toggle('active', !hadsMode && !entityMode);
-      pickerCardsTab?.setAttribute('aria-selected', String(!hadsMode && !entityMode));
+      pickerCardsTab?.classList.toggle('active', !entityMode);
+      pickerCardsTab?.setAttribute('aria-selected', String(!entityMode));
       pickerEntitiesTab?.classList.toggle('active', entityMode);
       pickerEntitiesTab?.setAttribute('aria-selected', String(entityMode));
-      pickerHadsTab?.classList.toggle('active', hadsMode);
-      pickerHadsTab?.setAttribute('aria-selected', String(hadsMode));
-      if (hadsStorePane) hadsStorePane.hidden = !hadsMode;
-      if (left) left.hidden = hadsMode;
+      if (left) left.hidden = false;
       left?.classList?.toggle('entity-picker-active', entityMode);
       const rightPane = modal.querySelector('#rightPane');
-      if (rightPane) rightPane.hidden = hadsMode || (entityMode && !selectedEntityCardType);
+      if (rightPane) rightPane.hidden = entityMode && !selectedEntityCardType;
       if (search) {
-        search.placeholder = hadsMode
-          ? 'Search HADS cards, dashboards, lights, battery...'
-          : (entityMode
-            ? (selectedEntityId ? 'Search compatible cards...' : 'Search entities by name, ID, domain, or state...')
-            : 'Search cards (name or type)...');
+        search.placeholder = entityMode
+          ? (selectedEntityId ? 'Search compatible cards...' : 'Search entities by name, ID, domain, or state...')
+          : 'Search cards (name or type)...';
       }
       if (searchWrap) searchWrap.hidden = false;
       if (pickerFootnote) {
-        pickerFootnote.innerHTML = hadsMode
-          ? 'HADS listings open on hads.smarti.dev'
-          : (entityMode
-            ? '<ha-icon icon="mdi:card-search-outline"></ha-icon> Choose an entity first, then pick any compatible card type.'
-            : 'Tip: use <ha-icon icon="mdi:star-outline"></ha-icon> to favorite cards you use often');
+        pickerFootnote.innerHTML = entityMode
+          ? '<ha-icon icon="mdi:card-search-outline"></ha-icon> Choose an entity first, then pick any compatible card type.'
+          : 'Tip: use <ha-icon icon="mdi:star-outline"></ha-icon> to favorite cards you use often';
       }
-      addTop.style.display = hadsMode ? 'none' : '';
-      addBottom.style.display = hadsMode ? 'none' : '';
-      if (hadsMode) {
-        enableCommit(false);
-        renderHadsStore();
-        refreshHadsCatalog();
-      } else if (entityMode) {
+      addTop.style.display = '';
+      addBottom.style.display = '';
+      if (entityMode) {
         renderEntityPicker();
-        refreshHadsCatalog();
         enableCommit(!!selectedEntityId && !!selectedEntityCardType && currentType === selectedEntityCardType && !!currentConfig);
       } else {
         renderLeft();
@@ -3098,7 +2258,6 @@ const smartPickerMethods = {
     let subElementParentSyncPending = false;
     pickerCardsTab?.addEventListener('click', () => setPickerMode('cards'));
     pickerEntitiesTab?.addEventListener('click', () => setPickerMode('entities'));
-    pickerHadsTab?.addEventListener('click', () => setPickerMode('hads'));
 
     const entityPickerIcon = (entityId, entityState = null) => {
       const explicit = String(entityState?.attributes?.icon || '').trim();
@@ -3125,76 +2284,21 @@ const smartPickerMethods = {
         ? { type: cardOption }
         : (cardOption || {});
       const optionKey = String(card.type || '').trim();
-      if (!selectedEntityId || !optionKey || hadsDownloadBusyType) return;
+      if (!selectedEntityId || !optionKey) return;
       selectedEntityCardOptionKey = optionKey;
-      selectedEntityCardType = card.hads ? '' : optionKey;
+      selectedEntityCardType = optionKey;
       renderEntityPicker();
       enableCommit(false);
       const entityState = this.hass?.states?.[selectedEntityId] || null;
-      if (!card.hads) {
-        const entityConfig = buildEntityCardConfig(selectedEntityId, optionKey, entityState);
-        await selectType(optionKey, {
-          fromUser: true,
-          configOverride: entityConfig,
-          replaceConfig: true,
-        });
-        if (activePickerMode === 'entities') {
-          renderEntityPicker();
-          enableCommit(currentType === selectedEntityCardType && !!currentConfig);
-        }
-        return;
-      }
-
-      const entityAtSelection = selectedEntityId;
-      hadsDownloadBusyType = optionKey;
-      renderEntityPicker();
-      try {
-        let listing = card.hadsItem || hadsItems.find((item) => item.type === optionKey);
-        if (!listing) throw new Error('This HADS card is no longer available.');
-        let cardConfig = listing.cardConfig ? extractHadsCardConfig(listing.cardConfig) : null;
-
-        if (!cardConfig) {
-          if (!hadsSession?.access_token) {
-            await connectHads();
-            if (!hadsSession?.access_token) throw new Error('Connect HADS to add this card.');
-          }
-          if (!listing.downloadUrl) {
-            await refreshHadsCatalog({ force: true });
-            listing = hadsItems.find((item) => item.type === optionKey) || listing;
-          }
-          if (!listing.downloadUrl) throw new Error('HADS has not exposed a card download for this listing yet.');
-          const payload = await this._hadsFetchJson_(listing.downloadUrl, { timeoutMs: 15000 });
-          cardConfig = extractHadsCardConfig(payload);
-          if (!cardConfig) throw new Error('This HADS listing is not a single card and cannot be added by entity.');
-        }
-
-        if (selectedEntityId !== entityAtSelection || selectedEntityCardOptionKey !== optionKey) return;
-        const entityConfig = bindEntityToHadsCardConfig(cardConfig, entityAtSelection, listing);
-        const nextType = String(entityConfig?.type || '').trim();
-        if (!nextType) throw new Error('The HADS card package does not contain a card type.');
-        selectedEntityCardType = nextType;
-        await selectType(nextType, {
-          fromUser: true,
-          configOverride: entityConfig,
-          replaceConfig: true,
-        });
-        this._rememberHadsOwned_(listing);
-        hadsItems = this._applyHadsOwnedCache_(hadsItems, {
-          includeLocal: !!hadsSession?.access_token,
-          trustOwned: !!hadsSession?.access_token,
-        });
-        this._toast?.('HADS card ready to customize.');
-      } catch (err) {
-        selectedEntityCardOptionKey = '';
-        selectedEntityCardType = '';
-        this._toast?.(err?.message || 'Could not load this HADS card.');
-        if (err?.status === 403) openHadsListing(card.hadsItem || {});
-      } finally {
-        hadsDownloadBusyType = '';
-        if (activePickerMode === 'entities') {
-          renderEntityPicker();
-          enableCommit(currentType === selectedEntityCardType && !!currentConfig);
-        }
+      const entityConfig = buildEntityCardConfig(selectedEntityId, optionKey, entityState);
+      await selectType(optionKey, {
+        fromUser: true,
+        configOverride: entityConfig,
+        replaceConfig: true,
+      });
+      if (activePickerMode === 'entities') {
+        renderEntityPicker();
+        enableCommit(currentType === selectedEntityCardType && !!currentConfig);
       }
     };
 
@@ -3214,8 +2318,8 @@ const smartPickerMethods = {
         const friendlyName = String(selectedState?.attributes?.friendly_name || selectedEntityId.split('.').slice(1).join(' ').replace(/_/g, ' '));
         const domain = entityDomain(selectedEntityId).replace(/_/g, ' ');
         const installedCustomCards = this._customCardsFromRegistry();
-        const compatibleCards = getCompatibleCardsForEntity(selectedEntityId, selectedState, installedCustomCards, hadsItems);
-        const matchingCards = compatibleCards.filter((card) => !q || [card.name, card.type, card.reason, card.installed ? 'installed custom' : (card.hads ? 'hads store library' : 'standard')]
+        const compatibleCards = getCompatibleCardsForEntity(selectedEntityId, selectedState, installedCustomCards);
+        const matchingCards = compatibleCards.filter((card) => !q || [card.name, card.type, card.reason, card.installed ? 'installed custom' : 'standard']
           .some((value) => String(value || '').toLowerCase().includes(q)));
 
         left.innerHTML = `
@@ -3256,18 +2360,16 @@ const smartPickerMethods = {
           const button = document.createElement('button');
           button.type = 'button';
           const selected = selectedEntityCardOptionKey === card.type;
-          const loading = card.hads && hadsDownloadBusyType === card.type;
-          button.className = `entity-card-option${card.recommended ? ' is-recommended' : ''}${card.installed ? ' is-installed' : ''}${card.hads ? ' is-hads' : ''}${selected ? ' is-selected' : ''}`;
+          button.className = `entity-card-option${card.recommended ? ' is-recommended' : ''}${card.installed ? ' is-installed' : ''}${selected ? ' is-selected' : ''}`;
           button.setAttribute('role', 'option');
           button.setAttribute('aria-selected', String(selected));
-          button.disabled = !!hadsDownloadBusyType;
           button.innerHTML = `
-            <ha-icon icon="${safe(loading ? 'mdi:loading' : card.icon)}"${loading ? ' class="entity-card-loading-icon"' : ''}></ha-icon>
+            <ha-icon icon="${safe(card.icon)}"></ha-icon>
             <span class="entity-card-option-copy">
               <strong>${safe(card.name)}</strong>
-              <small>${safe(loading ? 'Downloading this card from HADS…' : card.reason)}</small>
+              <small>${safe(card.reason)}</small>
             </span>
-            ${card.recommended ? '<em>Recommended</em>' : (card.installed ? '<em class="entity-card-installed-badge">Installed</em>' : (card.hads ? '<em class="entity-card-hads-badge">HADS</em>' : ''))}`;
+            ${card.recommended ? '<em>Recommended</em>' : (card.installed ? '<em class="entity-card-installed-badge">Installed</em>' : '')}`;
           button.addEventListener('click', () => { void selectCardForEntity(card); });
           cardOptions.appendChild(button);
         });
@@ -5168,15 +4270,14 @@ const smartPickerMethods = {
     addBottom.addEventListener('click', commit);
     modal.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') close();
-      if (e.key === 'Enter' && activePickerMode !== 'hads' && !addTop.disabled) commit();
+      if (e.key === 'Enter' && !addTop.disabled) commit();
     });
 
     let __searchTimer = null;
     search.addEventListener('input', () => {
       if (__searchTimer) clearTimeout(__searchTimer);
       __searchTimer = setTimeout(() => {
-        if (activePickerMode === 'hads') renderHadsStore();
-        else if (activePickerMode === 'entities') renderEntityPicker();
+        if (activePickerMode === 'entities') renderEntityPicker();
         else renderLeft();
       }, 120);
     });

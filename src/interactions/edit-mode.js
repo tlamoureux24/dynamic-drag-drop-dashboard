@@ -175,7 +175,6 @@ const editModeMethods = {
       setDisplay(this.exitEditBtn, on);
       setDisplay(this.exportBtn, on);
       setDisplay(this.importBtn, on);
-      setDisplay(this.exploreBtn, on);
       setDisplay(this.storeBadge, on);
       setDisplay(this.applyLayoutBtn, on);
       setDisplay(this.toolbarAutoSaveBtn, on);
@@ -197,7 +196,6 @@ const editModeMethods = {
       setDisplay(this.exitEditBtn, off);
       setDisplay(this.exportBtn, off);
       setDisplay(this.importBtn, off);
-      setDisplay(this.exploreBtn, off);
       setDisplay(this.storeBadge, off);
       setDisplay(this.applyLayoutBtn, off);
       setDisplay(this.toolbarAutoSaveBtn, off);
@@ -600,7 +598,6 @@ const editModeMethods = {
     toggle(this.exitEditBtn);
     toggle(this.exportBtn);
     toggle(this.importBtn);
-    toggle(this.exploreBtn);
     toggle(this.storeBadge);
     toggle(this.applyLayoutBtn);
     toggle(this.toolbarAutoSaveBtn);

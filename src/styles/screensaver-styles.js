@@ -156,6 +156,17 @@ export function getScreenSaverModernCss() {
         line-height:1.05;
         text-shadow:0 14px 42px rgba(0,0,0,.38);
       }
+      .screensaver-overlay .ss-custom-text{
+        margin:.35em 0 0;
+        font-size:clamp(1.4rem, 2.4vw, 2.6rem);
+        color:rgba(255,255,255,.92);
+        line-height:1.15;
+        white-space:pre-line;
+        text-shadow:0 14px 42px rgba(0,0,0,.38);
+      }
+      .screensaver-overlay .ss-custom-text:empty{
+        display:none;
+      }
       .screensaver-overlay .ss-quote{
         display:none;
         max-width:460px;

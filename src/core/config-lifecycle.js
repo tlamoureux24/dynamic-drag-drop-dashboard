@@ -186,6 +186,10 @@ const setConfigMethods = {
       this.screenSaverStyle = this._normalizeScreenSaverStyle_?.(config.screen_saver_style ?? config.screensaver_style ?? config.screen_saver_variant) || 'visionos_glass';
       this.screenSaverImage = String(config.screen_saver_image ?? config.screensaver_image ?? config.screen_saver_background_image ?? config.screenSaverImage ?? '').trim();
       this.screenSaverEntities = this._normalizeScreenSaverEntities_?.(config.screen_saver_entities ?? config.screensaver_entities ?? []) || [];
+      this.screenSaverBackground = ['dynamic', 'style', 'custom'].includes(config.screen_saver_background) ? config.screen_saver_background : '';
+      this.screenSaverShowTime = config.screen_saver_show_time !== false;
+      this.screenSaverShowDate = config.screen_saver_show_date !== false;
+      this.screenSaverText = String(config.screen_saver_text ?? '');
 
       if ((this.autoResizeCards || this._normalizeContainerSizeMode_(this.containerSizeMode || this.container_size_mode)==='auto')) this._startScaleWatch?.(); else this._stopScaleWatch?.();
       this._applyAutoScale?.();

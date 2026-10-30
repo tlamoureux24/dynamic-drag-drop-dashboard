@@ -153,3 +153,55 @@ test('the screen saver shows the dynamic scene unless a custom image is set', as
   host._config.background_dynamic.enabled = false;
   assert.equal(host._getScreenSaverDynamicImage_(), '');
 });
+
+test('the screen saver background follows the explicit choice, not the layout', async () => {
+  const { installScreenSaverMethods } = await import('../src/media/screensaver.js');
+  class Host {}
+  installScreenSaverMethods(Host.prototype);
+  const host = new Host();
+  host._config = { background_dynamic: { enabled: true } };
+  host.__dynamicBackgroundActive = { src: '/local/scenes/soiree-clair.png' };
+  host.screenSaverImage = '/local/mine.png';
+  const layoutImage = host._getScreenSaverBackgroundImage_('visionos_glass');
+
+  assert.equal(host._getScreenSaverBackgroundSource_(), 'custom', 'old configs with an image keep it');
+  host.screenSaverBackground = 'dynamic';
+  assert.deepEqual(host._getScreenSaverBackgroundFor_('visionos_glass'), { url: '/local/scenes/soiree-clair.png', source: 'dynamic' });
+  host.screenSaverBackground = 'style';
+  assert.equal(host._getScreenSaverBackgroundFor_('visionos_glass').url, layoutImage);
+  host.screenSaverBackground = 'custom';
+  host.screenSaverImage = '';
+  assert.equal(host._getScreenSaverBackgroundFor_('visionos_glass').url, layoutImage, 'an empty custom image falls back to the layout image');
+});
+
+test('layout previews hide the time and date when they are switched off', async () => {
+  const { installScreenSaverMethods } = await import('../src/media/screensaver.js');
+  class Host {}
+  installScreenSaverMethods(Host.prototype);
+  const host = new Host();
+  host._config = {};
+  assert.doesNotMatch(host._renderScreenSaverStyleOptions_(), /class="ss-mini-time" hidden/);
+  host.screenSaverShowTime = false;
+  host.screenSaverShowDate = false;
+  const html = host._renderScreenSaverStyleOptions_();
+  assert.match(html, /class="ss-mini-time" hidden/);
+  assert.match(html, /class="ss-mini-date" hidden/);
+});
+
+test('screen saver text replaces entity placeholders with their current values', async () => {
+  const { installScreenSaverMethods } = await import('../src/media/screensaver.js');
+  class Host {}
+  installScreenSaverMethods(Host.prototype);
+  const host = new Host();
+  host._hass = {
+    states: {
+      'sensor.outdoor': { state: '17.6', attributes: { unit_of_measurement: '°C' } },
+      'weather.home': { state: 'sunny', attributes: {} },
+    },
+  };
+  assert.equal(host._getScreenSaverText_(), '');
+  host.screenSaverText = 'Dehors : {sensor.outdoor}\n{ weather.home } {sensor.missing}';
+  assert.equal(host._getScreenSaverText_(), 'Dehors : 17.6 °C\nsunny {sensor.missing}');
+  host._hass.formatEntityState = (stateObj) => (stateObj.state === 'sunny' ? 'Ensoleillé' : '17,6 °C');
+  assert.equal(host._getScreenSaverText_(), 'Dehors : 17,6 °C\nEnsoleillé {sensor.missing}');
+});

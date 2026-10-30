@@ -16,6 +16,7 @@ import interact from 'interactjs';
 import jsyaml from 'js-yaml';
 import { initializeDragAndDropCardInstance } from './core/element-state.js';
 import { installDragAndDropCardFeatures } from './core/install-features.js';
+import { recoverFromStalePage } from './ha/stale-page-recovery.js';
 
 // expose for your existing code that checks window.interact/jsyaml
 if (!window.interact) window.interact = interact;
@@ -62,10 +63,14 @@ class DragAndDropCard extends HTMLElement {
   // === GRID SELECT PATCH END (fields) ===
 }
 
-// The integration loads this module both as an extra frontend module and as a
-// Lovelace resource. A cached page can still import an older ?v= URL, so two
-// copies may run; only the first one installs anything.
-if (!window.__dynamicDragDropDashboardInstalled) {
+// A cached page can still import an older ?v= URL, so two copies may run.
+// Only the first one installs anything; a newer second copy clears the cached
+// pages behind the old one and reloads once. Releases before 0.2.6 set no flag.
+const installedVersion = window.__dynamicDragDropDashboardInstalled
+  || (customElements.get('dynamic-drag-drop-dashboard') ? 'unknown' : '');
+if (!installedVersion) {
   window.__dynamicDragDropDashboardInstalled = VERSION;
   installDragAndDropCardFeatures(DragAndDropCard, VERSION);
+} else {
+  recoverFromStalePage(VERSION, { installedVersion });
 }

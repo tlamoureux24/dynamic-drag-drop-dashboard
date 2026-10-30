@@ -233,8 +233,8 @@ const FR = Object.freeze({
   'Minutes of inactivity before the screen saver appears.': 'Nombre de minutes d’inactivité avant l’apparition de l’économiseur.',
   'Choose the full-screen idle experience. Each preview is rendered from the actual design preset.':
     'Choisissez l’affichage plein écran au repos. Chaque aperçu utilise réellement le style correspondant.',
-  'Optional image that replaces the selected preset background while keeping the same screen saver layout.':
-    'Image facultative remplaçant le fond du style sélectionné tout en conservant sa disposition.',
+  'Optional image that replaces the selected preset background while keeping the same screen saver layout. Without one, an active dynamic background is used.':
+    'Image facultative remplaçant le fond du style sélectionné tout en conservant sa disposition. Sans image, le fond dynamique est utilisé s’il est activé.',
   'Only selected Home Assistant entities appear. Empty slots stay hidden.': 'Seules les entités Home Assistant sélectionnées apparaissent. Les emplacements vides restent masqués.',
   'Controls where the regular tabs bar sits around the dashboard.': 'Définit la position de la barre d’onglets autour du tableau de bord.',
   'Scales the tab controls while preserving touch-friendly sizing and viewport alignment.':

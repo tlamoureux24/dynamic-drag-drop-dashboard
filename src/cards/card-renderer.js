@@ -1088,7 +1088,9 @@ const cardBuilderMethods = {
     // are never shown, yet every <ha-icon> runs its own (and card-mod's) setup,
     // which forces a style recalculation. On a 300-card dashboard that froze
     // the page for 5 s on every build, so the icons stay as inert placeholders
-    // until the wrapper is shown in edit mode.
+    // until the wrapper is shown in edit mode. Even then, only the handles are
+    // always visible; the card menu and shortcuts appear on hover, focus or
+    // selection, so their icons are created at that point.
     _deferWrapperEditIcons_(wrap) {
       if (!wrap || this.editMode) return;
       const card = wrap.firstElementChild;
@@ -1103,17 +1105,28 @@ const cardBuilderMethods = {
           deferred += 1;
         });
       }
-      if (deferred) wrap.dataset.ddcEditIconsDeferred = 'true';
+      if (!deferred) return;
+      wrap.dataset.ddcEditIconsDeferred = 'true';
+      const restoreOnDemand = () => {
+        if (this.editMode) this._restoreWrapperEditIcons_(wrap);
+      };
+      wrap.addEventListener('pointerenter', restoreOnDemand);
+      wrap.addEventListener('focusin', restoreOnDemand);
     },
 
-    _restoreWrapperEditIcons_(wrap) {
+    _restoreWrapperEditIcons_(wrap, { handlesOnly = false } = {}) {
       if (wrap?.dataset?.ddcEditIconsDeferred !== 'true') return;
-      delete wrap.dataset.ddcEditIconsDeferred;
+      let remaining = 0;
       wrap.querySelectorAll('span.ddc-deferred-icon').forEach((slot) => {
+        if (handlesOnly && slot.closest('.chip, .ddc-card-edit-actions')) {
+          remaining += 1;
+          return;
+        }
         const icon = document.createElement('ha-icon');
         icon.setAttribute('icon', slot.dataset.icon || '');
         slot.replaceWith(icon);
       });
+      if (!remaining) delete wrap.dataset.ddcEditIconsDeferred;
     },
 
     _makeWrapper(cardEl, options = {}) {

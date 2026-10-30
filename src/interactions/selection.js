@@ -71,6 +71,8 @@ const selectionMethods = {
       const on = force==null ? !this._selection.has(wrap) : !!force;
       if (on) this._selection.add(wrap); else this._selection.delete(wrap);
       wrap.classList.toggle('selected', on);
+      // A selected card shows its menu, notably on touch screens without hover.
+      if (on && this.editMode) this._restoreWrapperEditIcons_?.(wrap);
       this._scheduleSelectionArrangeToolbarSync_?.();
     },
 

@@ -113,11 +113,30 @@ test('hovering outside edit mode keeps the icons deferred', () => {
   });
 });
 
-test('wrappers built in edit mode keep their icons', () => {
-  const host = new Host();
-  host.editMode = true;
-  const wrap = wrapper();
-  host._deferWrapperEditIcons_(wrap);
-  assert.equal(wrap.querySelectorAll('ha-icon').length, 5);
-  assert.equal(wrap.dataset.ddcEditIconsDeferred, undefined);
+test('wrappers built in edit mode get only their handles once attached and visible', () => {
+  withDocument(() => {
+    const frames = [];
+    globalThis.requestAnimationFrame = (callback) => frames.push(callback);
+    try {
+      const host = new Host();
+      host.editMode = true;
+
+      const visible = wrapper();
+      visible.style = { display: '' };
+      host._deferWrapperEditIcons_(visible);
+      assert.deepEqual(iconNames(visible), ['mdi:card-own']);
+      visible.isConnected = true;
+
+      const hidden = wrapper();
+      hidden.style = { display: 'none' };
+      hidden.isConnected = true;
+      host._deferWrapperEditIcons_(hidden);
+
+      frames.splice(0).forEach((callback) => callback());
+      assert.deepEqual(iconNames(visible), ['mdi:card-own', 'mdi:resize-bottom-right']);
+      assert.deepEqual(iconNames(hidden), ['mdi:card-own'], 'other tabs wait until shown');
+    } finally {
+      delete globalThis.requestAnimationFrame;
+    }
+  });
 });

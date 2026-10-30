@@ -1084,6 +1084,38 @@ const cardBuilderMethods = {
       this.style?.setProperty?.('--ddc-card-overflow', mode);
     },
 
+    // Each wrapper carries about 13 edit-control icons. Outside edit mode they
+    // are never shown, yet every <ha-icon> runs its own (and card-mod's) setup,
+    // which forces a style recalculation. On a 300-card dashboard that froze
+    // the page for 5 s on every build, so the icons stay as inert placeholders
+    // until the wrapper is shown in edit mode.
+    _deferWrapperEditIcons_(wrap) {
+      if (!wrap || this.editMode) return;
+      const card = wrap.firstElementChild;
+      let deferred = 0;
+      for (const child of Array.from(wrap.children)) {
+        if (child === card) continue;
+        child.querySelectorAll('ha-icon').forEach((icon) => {
+          const slot = document.createElement('span');
+          slot.className = 'ddc-deferred-icon';
+          slot.dataset.icon = icon.getAttribute('icon') || '';
+          icon.replaceWith(slot);
+          deferred += 1;
+        });
+      }
+      if (deferred) wrap.dataset.ddcEditIconsDeferred = 'true';
+    },
+
+    _restoreWrapperEditIcons_(wrap) {
+      if (wrap?.dataset?.ddcEditIconsDeferred !== 'true') return;
+      delete wrap.dataset.ddcEditIconsDeferred;
+      wrap.querySelectorAll('span.ddc-deferred-icon').forEach((slot) => {
+        const icon = document.createElement('ha-icon');
+        icon.setAttribute('icon', slot.dataset.icon || '');
+        slot.replaceWith(icon);
+      });
+    },
+
     _makeWrapper(cardEl, options = {}) {
       this._syncCardOverflow_?.();
       const wrap = document.createElement('div');
@@ -1412,6 +1444,7 @@ const cardBuilderMethods = {
           if (btn) btn.click();
         } catch {}
       });
+      this._deferWrapperEditIcons_(wrap);
       requestAnimationFrame(() => this._syncCompactEditUiForWrapper_?.(wrap));
       return wrap;
     },

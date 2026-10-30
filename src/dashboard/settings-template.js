@@ -1042,7 +1042,7 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
         <div class="row">
           <div class="title">
             <ha-icon icon="mdi:image-filter-hdr" aria-hidden="true"></ha-icon>
-            <label id="lbl-ss-style">Screen saver design</label>
+            <label id="lbl-ss-style">Screen saver layout</label>
           </div>
         </div>
         <input type="hidden" id="ddc-setting-screenSaverStyle" />
@@ -1065,11 +1065,29 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
             ${screenSaverStyleOptionsHtml}
           </div>
         </div>
-        <div class="hint">Choose the full-screen idle experience. Each preview is rendered from the actual design preset.</div>
+        <div class="hint">Sets where the time, date and status appear. The previews use the background chosen below.</div>
+      </div>
+
+      <!-- Background source -->
+      <div class="setting" role="group" aria-labelledby="lbl-ss-background">
+        <div class="row">
+          <div class="title">
+            <ha-icon icon="mdi:image-multiple" aria-hidden="true"></ha-icon>
+            <label id="lbl-ss-background" for="ddc-setting-screenSaverBackground">Screen saver background</label>
+          </div>
+          <div class="control">
+            <select id="ddc-setting-screenSaverBackground">
+              <option value="dynamic">Dashboard dynamic background</option>
+              <option value="style">Layout image</option>
+              <option value="custom">Custom image</option>
+            </select>
+          </div>
+        </div>
+        <div class="hint">The dynamic background follows the sun and weather, like the dashboard. Without it, the layout image is shown.</div>
       </div>
 
       <!-- Custom background image -->
-      <div class="setting" role="group" aria-labelledby="lbl-ss-image">
+      <div class="setting" role="group" aria-labelledby="lbl-ss-image" id="ddc-screenSaverImageSetting">
         <div class="row">
           <div class="title">
             <ha-icon icon="mdi:image-plus" aria-hidden="true"></ha-icon>
@@ -1088,7 +1106,31 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
             </div>
           </div>
         </div>
-        <div class="hint">Optional image that replaces the selected preset background while keeping the same screen saver layout. Without one, an active dynamic background is used.</div>
+        <div class="hint">Shown when the screen saver background is set to Custom image.</div>
+      </div>
+
+      <!-- Time and date -->
+      <div class="setting" role="group" aria-labelledby="lbl-ss-show-time">
+        <div class="row">
+          <div class="title">
+            <ha-icon icon="mdi:clock-digital" aria-hidden="true"></ha-icon>
+            <label id="lbl-ss-show-time" for="ddc-setting-screenSaverShowTime">Show time</label>
+          </div>
+          <div class="control">
+            <ha-switch id="ddc-setting-screenSaverShowTime"></ha-switch>
+          </div>
+        </div>
+      </div>
+      <div class="setting" role="group" aria-labelledby="lbl-ss-show-date">
+        <div class="row">
+          <div class="title">
+            <ha-icon icon="mdi:calendar-today" aria-hidden="true"></ha-icon>
+            <label id="lbl-ss-show-date" for="ddc-setting-screenSaverShowDate">Show date</label>
+          </div>
+          <div class="control">
+            <ha-switch id="ddc-setting-screenSaverShowDate"></ha-switch>
+          </div>
+        </div>
       </div>
 
       <!-- Status entities -->

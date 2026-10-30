@@ -233,8 +233,16 @@ const FR = Object.freeze({
   'Minutes of inactivity before the screen saver appears.': 'Nombre de minutes d’inactivité avant l’apparition de l’économiseur.',
   'Choose the full-screen idle experience. Each preview is rendered from the actual design preset.':
     'Choisissez l’affichage plein écran au repos. Chaque aperçu utilise réellement le style correspondant.',
-  'Optional image that replaces the selected preset background while keeping the same screen saver layout. Without one, an active dynamic background is used.':
-    'Image facultative remplaçant le fond du style sélectionné tout en conservant sa disposition. Sans image, le fond dynamique est utilisé s’il est activé.',
+  'Shown when the screen saver background is set to Custom image.': 'Utilisée quand le fond de l’économiseur est réglé sur « Image personnalisée ».',
+  'Screen saver layout': 'Disposition de l’économiseur',
+  'Sets where the time, date and status appear. The previews use the background chosen below.':
+    'Définit où s’affichent l’heure, la date et les états. Les aperçus utilisent le fond choisi plus bas.',
+  'Screen saver background': 'Fond de l’économiseur',
+  'Dashboard dynamic background': 'Fond dynamique du tableau', 'Layout image': 'Image de la disposition',
+  'The dynamic background follows the sun and weather, like the dashboard. Without it, the layout image is shown.':
+    'Le fond dynamique suit le soleil et la météo, comme le tableau. S’il n’est pas activé, l’image de la disposition est affichée.',
+  'Show time': 'Afficher l’heure', 'Show date': 'Afficher la date',
+  'Custom image': 'Image personnalisée',
   'Only selected Home Assistant entities appear. Empty slots stay hidden.': 'Seules les entités Home Assistant sélectionnées apparaissent. Les emplacements vides restent masqués.',
   'Controls where the regular tabs bar sits around the dashboard.': 'Définit la position de la barre d’onglets autour du tableau de bord.',
   'Scales the tab controls while preserving touch-friendly sizing and viewport alignment.':

@@ -267,6 +267,10 @@ const dashboardSettingsMethods = {
     const btnScreenSaverClearImage = modal.querySelector('#ddc-screenSaverClearImage');
     const screenSaverImageThumb = modal.querySelector('#ddc-screenSaverImageThumb');
     const screenSaverEntityList = modal.querySelector('#ddc-screenSaverEntityList');
+    const selScreenSaverBackground = modal.querySelector('#ddc-setting-screenSaverBackground');
+    const screenSaverImageSetting = modal.querySelector('#ddc-screenSaverImageSetting');
+    const chkScreenSaverShowTime = modal.querySelector('#ddc-setting-screenSaverShowTime');
+    const chkScreenSaverShowDate = modal.querySelector('#ddc-setting-screenSaverShowDate');
 
     const selBgMode           = modal.querySelector('#ddc-bg-mode');
     const backgroundSections = Array.from(modal.querySelectorAll('[data-bg-section]'));
@@ -1683,7 +1687,26 @@ const dashboardSettingsMethods = {
       }
       if (btnScreenSaverClearImage) btnScreenSaverClearImage.disabled = !nextSrc;
     };
+    // Previews show the chosen background and the time/date switches.
+    const refreshScreenSaverPreviews = () => {
+      screenSaverStyleCards.forEach((card) => {
+        const preview = card.querySelector('.ss-style-preview');
+        if (preview) {
+          const url = this._getScreenSaverBackgroundFor_?.(card.dataset.screensaverStyle)?.url || '';
+          if (url) {
+            preview.style.setProperty('--ss-preview-bg-image', this._screenSaverCssUrl_(url));
+            preview.dataset.ssPreviewImage = '1';
+          } else {
+            preview.style.removeProperty('--ss-preview-bg-image');
+            delete preview.dataset.ssPreviewImage;
+          }
+        }
+        card.querySelector('.ss-mini-time')?.toggleAttribute('hidden', !this._screenSaverShowsTime_?.());
+        card.querySelector('.ss-mini-date')?.toggleAttribute('hidden', !this._screenSaverShowsDate_?.());
+      });
+    };
     const refreshLiveScreenSaverImage = () => {
+      refreshScreenSaverPreviews();
       try {
         this._renderScreenSaverOverlayContent_?.();
         this._updateScreenSaverClock?.();
@@ -1696,6 +1719,28 @@ const dashboardSettingsMethods = {
       updateScreenSaverImageThumb(nextSrc);
       refreshLiveScreenSaverImage();
     };
+    const syncScreenSaverImageSetting = () => {
+      if (screenSaverImageSetting) {
+        screenSaverImageSetting.style.display = this._getScreenSaverBackgroundSource_?.() === 'custom' ? '' : 'none';
+      }
+    };
+    if (selScreenSaverBackground) {
+      selScreenSaverBackground.value = this._getScreenSaverBackgroundSource_?.() || 'style';
+      selScreenSaverBackground.addEventListener('change', () => {
+        this.screenSaverBackground = selScreenSaverBackground.value;
+        syncScreenSaverImageSetting();
+        refreshLiveScreenSaverImage();
+      });
+    }
+    syncScreenSaverImageSetting();
+    for (const [toggle, key] of [[chkScreenSaverShowTime, 'screenSaverShowTime'], [chkScreenSaverShowDate, 'screenSaverShowDate']]) {
+      if (!toggle) continue;
+      toggle.checked = this[key] !== false;
+      toggle.addEventListener('change', () => {
+        this[key] = !!toggle.checked;
+        refreshLiveScreenSaverImage();
+      });
+    }
     if (inpScreenSaverImage) {
       inpScreenSaverImage.value = this._getScreenSaverCustomImage_?.() || this.screenSaverImage || '';
       inpScreenSaverImage.addEventListener('input', () => setScreenSaverImageSource(inpScreenSaverImage.value));
@@ -3058,6 +3103,9 @@ const dashboardSettingsMethods = {
       const newScreenSaverDelayMs   = (Number.isFinite(newScreenSaverDelayMin) ? newScreenSaverDelayMin : 1) * 60000;
       const newScreenSaverStyle     = this._normalizeScreenSaverStyle_?.(inpScreenSaverStyle?.value || this.screenSaverStyle) || 'visionos_glass';
       const newScreenSaverImage     = String(inpScreenSaverImage ? inpScreenSaverImage.value : (this.screenSaverImage || '')).trim();
+      const newScreenSaverBackground = selScreenSaverBackground?.value || this._getScreenSaverBackgroundSource_?.() || 'style';
+      const newScreenSaverShowTime  = chkScreenSaverShowTime ? !!chkScreenSaverShowTime.checked : this.screenSaverShowTime !== false;
+      const newScreenSaverShowDate  = chkScreenSaverShowDate ? !!chkScreenSaverShowDate.checked : this.screenSaverShowDate !== false;
       const newScreenSaverEntities  = this._normalizeScreenSaverEntities_?.(screenSaverEntityDrafts) || [];
 
       // hero image not exposed to user
@@ -3387,6 +3435,9 @@ const dashboardSettingsMethods = {
         this.screenSaverDelay   = newScreenSaverDelayMs;
         this.screenSaverStyle   = newScreenSaverStyle;
         this.screenSaverImage   = newScreenSaverImage;
+        this.screenSaverBackground = newScreenSaverBackground;
+        this.screenSaverShowTime = newScreenSaverShowTime;
+        this.screenSaverShowDate = newScreenSaverShowDate;
         this.screenSaverEntities = newScreenSaverEntities;
         this._updateScreensaverSettings?.();
 
@@ -3488,6 +3539,9 @@ const dashboardSettingsMethods = {
           else delete this._config.screen_saver_image;
           delete this._config.screensaver_image;
           delete this._config.screen_saver_background_image;
+          this._config.screen_saver_background = this.screenSaverBackground;
+          this._config.screen_saver_show_time  = this.screenSaverShowTime !== false;
+          this._config.screen_saver_show_date  = this.screenSaverShowDate !== false;
           this._config.screen_saver_entities   = this._cloneJson_?.(this.screenSaverEntities) || this.screenSaverEntities;
           // Background image src is already updated in this._config.background_image above
         } catch (cfgErr) {

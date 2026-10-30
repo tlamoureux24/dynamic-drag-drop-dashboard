@@ -321,6 +321,10 @@ export function getSettingsStyles() {
     background-size:cover;
     background-repeat:no-repeat;
   }
+  .ss-mini-time[hidden],
+  .ss-mini-date[hidden]{
+    display:none !important;
+  }
   .ss-mini-time{
     position:absolute;
     left:22px;

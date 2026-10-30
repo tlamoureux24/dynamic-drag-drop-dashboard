@@ -54,11 +54,38 @@ const screenSaverMethods = {
     ).trim();
   },
 
-  // Without a custom image, the screen saver shows the dashboard's current
-  // dynamic scene so it follows the sun and weather like the canvas.
   _getScreenSaverDynamicImage_() {
     if (!this._config?.background_dynamic?.enabled) return '';
     return String(this.__dynamicBackgroundActive?.src || '').trim();
+  },
+
+  // The design only sets the layout; the background is chosen separately:
+  // the dashboard's dynamic scene, the design's own image, or a custom image.
+  // Older configs have no choice saved, so infer it from what they set.
+  _getScreenSaverBackgroundSource_() {
+    const saved = String(this.screenSaverBackground ?? this._config?.screen_saver_background ?? '').trim();
+    if (['dynamic', 'style', 'custom'].includes(saved)) return saved;
+    if (this._getScreenSaverCustomImage_?.()) return 'custom';
+    return this._config?.background_dynamic?.enabled ? 'dynamic' : 'style';
+  },
+
+  // Falls back to the design's image when the chosen source has none yet.
+  _getScreenSaverBackgroundFor_(style) {
+    const source = this._getScreenSaverBackgroundSource_();
+    const chosen = source === 'custom' ? this._getScreenSaverCustomImage_?.()
+      : source === 'dynamic' ? this._getScreenSaverDynamicImage_?.()
+        : '';
+    return chosen
+      ? { url: chosen, source }
+      : { url: this._getScreenSaverBackgroundImage_(style), source: 'postimg' };
+  },
+
+  _screenSaverShowsTime_() {
+    return this.screenSaverShowTime !== false;
+  },
+
+  _screenSaverShowsDate_() {
+    return this.screenSaverShowDate !== false;
   },
 
   _screenSaverCssUrl_(url = '') {
@@ -96,10 +123,7 @@ const screenSaverMethods = {
     const overlay = this.screenSaverOverlay;
     if (!overlay) return;
     const styleId = this._normalizeScreenSaverStyle_?.(style) || 'visionos_glass';
-    const customUrl = this._getScreenSaverCustomImage_?.() || '';
-    const dynamicUrl = customUrl ? '' : (this._getScreenSaverDynamicImage_?.() || '');
-    const url = customUrl || dynamicUrl || this._getScreenSaverBackgroundImage_(styleId);
-    const source = customUrl ? 'custom' : (dynamicUrl ? 'dynamic' : 'postimg');
+    const { url, source } = this._getScreenSaverBackgroundFor_(styleId);
     const token = `${styleId}:${url}`;
     this.__screenSaverBgToken = token;
 
@@ -271,15 +295,15 @@ const screenSaverMethods = {
     }[ch]));
     return presets.map((preset, index) => {
       const active = preset.id === selected;
-      const previewImage = this._getScreenSaverBackgroundImage_?.(preset.id) || '';
+      const previewImage = this._getScreenSaverBackgroundFor_?.(preset.id)?.url || '';
       const previewStyle = previewImage
         ? ` style="--ss-preview-bg-image:${esc(this._screenSaverCssUrl_(previewImage))}" data-ss-preview-image="1"`
         : '';
       return `
         <button type="button" class="ss-style-card" data-screensaver-style="${esc(preset.id)}" role="option" aria-selected="${active ? 'true' : 'false'}" tabindex="${active ? '0' : '-1'}">
           <span class="ss-style-preview ss-style-preview--${esc(preset.id)}" aria-hidden="true"${previewStyle}>
-            <span class="ss-mini-time">09:25</span>
-            <span class="ss-mini-date">Friday, May 15</span>
+            <span class="ss-mini-time"${this._screenSaverShowsTime_?.() === false ? ' hidden' : ''}>09:25</span>
+            <span class="ss-mini-date"${this._screenSaverShowsDate_?.() === false ? ' hidden' : ''}>Friday, May 15</span>
             <span class="ss-mini-rail">
               <span class="ss-mini-chip"></span>
               <span class="ss-mini-chip"></span>
@@ -803,6 +827,11 @@ const screenSaverMethods = {
         </section>
       </main>
     `;
+    // Design CSS sets display on these, so an inline !important wins.
+    const hide = (selector) => overlay.querySelectorAll(selector)
+      .forEach((el) => el.style.setProperty('display', 'none', 'important'));
+    if (!this._screenSaverShowsTime_()) hide('.ss-time-line');
+    if (!this._screenSaverShowsDate_()) hide('.screensaver-date, .ss-date-tile');
   },
 
   _getScreenSaverModernCss_() {

@@ -32,11 +32,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # integration version to make browsers fetch each release.
         integration = await async_get_integration(hass, DOMAIN)
         module_url = f"{FRONTEND_URL}?v={integration.version}"
-        add_extra_js_url(hass, module_url)
-        # The extra module only reaches pages rendered after this setup, and the
-        # frontend service worker keeps serving older copies of the page. A
-        # Lovelace resource is fetched with each dashboard config instead.
-        await _async_sync_lovelace_resource(hass, module_url)
+        # Prefer a Lovelace resource: it is fetched with each dashboard config.
+        # An extra module is written into the page, and the frontend service
+        # worker keeps serving old copies of it that import an older version.
+        if not await _async_sync_lovelace_resource(hass, module_url):
+            add_extra_js_url(hass, module_url)
         state["frontend_registered"] = True
 
     return True
@@ -59,11 +59,14 @@ def _lovelace_resources(hass: HomeAssistant) -> Any | None:
     return resources
 
 
-async def _async_sync_lovelace_resource(hass: HomeAssistant, url: str | None) -> None:
-    """Point the module resource at url, or remove it when url is None."""
+async def _async_sync_lovelace_resource(hass: HomeAssistant, url: str | None) -> bool:
+    """Point the module resource at url, or remove it when url is None.
+
+    Return True when dashboards will load url through the resource.
+    """
     resources = _lovelace_resources(hass)
     if resources is None:
-        return
+        return False
     try:
         if not getattr(resources, "loaded", True):
             await resources.async_load()
@@ -76,10 +79,10 @@ async def _async_sync_lovelace_resource(hass: HomeAssistant, url: str | None) ->
         if url is None:
             for item in items:
                 await resources.async_delete_item(item["id"])
-            return
+            return False
         if not items:
             await resources.async_create_item({"res_type": "module", "url": url})
-            return
+            return True
         first, *duplicates = items
         if first.get("url") != url or first.get("type") != "module":
             await resources.async_update_item(
@@ -87,8 +90,10 @@ async def _async_sync_lovelace_resource(hass: HomeAssistant, url: str | None) ->
             )
         for item in duplicates:
             await resources.async_delete_item(item["id"])
-    except Exception:  # noqa: BLE001 - the extra module still loads on fresh pages
+    except Exception:  # noqa: BLE001 - setup falls back to an extra module
         _LOGGER.warning("Could not register the dashboard Lovelace resource", exc_info=True)
+        return False
+    return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

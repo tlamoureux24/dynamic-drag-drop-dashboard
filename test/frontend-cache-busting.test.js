@@ -24,5 +24,5 @@ test('the module is a Lovelace resource, and an extra module only when resources
 
 test('a second copy of the module installs nothing', async () => {
   const entry = await readFile(new URL('../src/drag-and-drop-card.js', import.meta.url), 'utf8');
-  assert.match(entry, /if \(!window\.__dynamicDragDropDashboardInstalled\) \{\s*window\.__dynamicDragDropDashboardInstalled = VERSION;\s*installDragAndDropCardFeatures/);
+  assert.match(entry, /if \(!installedVersion\) \{\s*window\.__dynamicDragDropDashboardInstalled = VERSION;\s*installDragAndDropCardFeatures/);
 });

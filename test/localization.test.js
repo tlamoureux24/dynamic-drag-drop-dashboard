@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveDashboardLanguage, translateDashboardText } from '../src/localization/i18n.js';
+import { installLocalizationMethods, resolveDashboardLanguage, translateDashboardText } from '../src/localization/i18n.js';
+
+test('state updates re-translate the dashboard only when the language changes', () => {
+  class Card {}
+  installLocalizationMethods(Card.prototype);
+  const card = new Card();
+  let passes = 0;
+  card._translateDashboardUi_ = () => { passes += 1; };
+
+  card._hass = { locale: { language: 'fr' }, states: { 'sensor.a': { state: '1' } } };
+  assert.equal(card._syncDashboardLocalization_(), true);
+  for (let i = 0; i < 50; i += 1) {
+    card._hass = { locale: { language: 'fr' }, states: { 'sensor.a': { state: String(i) } } };
+    assert.equal(card._syncDashboardLocalization_(), false);
+  }
+  assert.equal(passes, 1);
+
+  card._hass = { locale: { language: 'en' } };
+  assert.equal(card._syncDashboardLocalization_(), true);
+  assert.equal(passes, 2);
+});
 
 test('dashboard language follows Home Assistant locale and keeps English fallback', () => {
   assert.equal(resolveDashboardLanguage({ locale: { language: 'fr-FR' } }), 'fr');

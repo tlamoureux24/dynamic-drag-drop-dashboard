@@ -430,10 +430,22 @@ const localizationMethods = {
     translateDashboardTree(root, this._dashboardLanguage_?.() || 'en');
   },
 
+  // Home Assistant pushes a new hass object on every state change. The
+  // observer below already translates added nodes, so the full tree only needs
+  // another pass when the resolved language changes.
+  _syncDashboardLocalization_() {
+    const language = this._dashboardLanguage_?.() || 'en';
+    if (language === this.__dashboardLocalizedLanguage) return false;
+    this.__dashboardLocalizedLanguage = language;
+    this._translateDashboardUi_?.();
+    return true;
+  },
+
   _startDashboardLocalization_() {
     this._stopDashboardLocalization_?.();
     const root = this.shadowRoot;
     if (!root) return;
+    this.__dashboardLocalizedLanguage = this._dashboardLanguage_?.() || 'en';
     this._translateDashboardUi_?.(root);
     this.__dashboardLocalizationObserver = new MutationObserver((mutations) => {
       const language = this._dashboardLanguage_?.() || 'en';

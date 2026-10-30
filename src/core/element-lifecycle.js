@@ -368,7 +368,7 @@ const lifecycleMethods = {
 
   set hass(hass) {
       this._hass = hass;
-      try { this._translateDashboardUi_?.(); } catch {}
+      try { this._syncDashboardLocalization_?.(); } catch {}
       try { this._refreshDynamicBackground_?.(); } catch {}
       if (this.editMode && this._canEditDashboard_?.() === false) this._toggleEditMode?.(false);
       if (hass && this.__cfgReady && !this.__booted && this._getStorageMode_?.() === 'lovelace') {

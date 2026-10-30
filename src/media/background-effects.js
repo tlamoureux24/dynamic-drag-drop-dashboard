@@ -526,7 +526,8 @@ const backgroundEffectsMethods = {
     const base = mode === 'none' ? String(this.containerBackground ?? '').trim() : '';
 
     if (mode === 'image') {
-      const bg = this._config?.background_image || this._config?.bg_image || null;
+      // Same image as the canvas: the dynamic scene when one is active.
+      const bg = this._getEffectiveBackgroundImage_?.() || this._config?.background_image || this._config?.bg_image || null;
       const rawUrl = String(bg?.src || '').trim();
       const imageUrl = this._normalizeMediaUrl_(rawUrl);
       if (imageUrl) {

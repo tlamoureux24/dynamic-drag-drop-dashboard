@@ -416,8 +416,12 @@ const lifecycleMethods = {
         this._initialLoad(true);
       }
 
+      // Hidden cards (other tabs, layers, unmet visibility conditions) would
+      // otherwise re-render on every state change. They receive the current
+      // hass when they become visible again (_applyWrapDisplayState_).
       const wraps = this.cardContainer?.children || [];
       for (const wrap of wraps) {
+        if (wrap.style?.display === 'none') continue;
         const c = wrap.firstElementChild;
         if (c && c.hass !== hass) {
           c.hass = hass;

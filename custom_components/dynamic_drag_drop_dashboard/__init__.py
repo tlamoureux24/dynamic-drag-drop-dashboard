@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN, FRONTEND_FILENAME, FRONTEND_URL
 from .views import register_http_views
@@ -22,7 +24,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(FRONTEND_URL, str(frontend_path), True)]
         )
-        hass.data.setdefault("frontend_extra_module_url", set()).add(FRONTEND_URL)
+        # The static file is cached for 31 days, so the module URL carries the
+        # integration version to make browsers fetch each release.
+        integration = await async_get_integration(hass, DOMAIN)
+        add_extra_js_url(hass, f"{FRONTEND_URL}?v={integration.version}")
         state["frontend_registered"] = True
 
     return True

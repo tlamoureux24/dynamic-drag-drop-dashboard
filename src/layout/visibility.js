@@ -154,6 +154,13 @@ const visibilityMethods = {
     }
 
     const isHidden = wrap.classList.contains('ddc-hidden') || wrap.style.display === 'none' || wrap.inert === true;
+    // The hass setter skips hidden cards, so bring a newly shown card up to date.
+    if (wasHidden && !isHidden) {
+      const card = wrap.firstElementChild;
+      if (card && this._hass && card.hass !== this._hass) {
+        try { card.hass = this._hass; } catch {}
+      }
+    }
     return {
       changed: wasHidden !== isHidden,
       becameVisible: wasHidden && !isHidden,

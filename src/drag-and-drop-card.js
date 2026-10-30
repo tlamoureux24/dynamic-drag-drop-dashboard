@@ -62,4 +62,10 @@ class DragAndDropCard extends HTMLElement {
   // === GRID SELECT PATCH END (fields) ===
 }
 
-installDragAndDropCardFeatures(DragAndDropCard, VERSION);
+// The integration loads this module both as an extra frontend module and as a
+// Lovelace resource. A cached page can still import an older ?v= URL, so two
+// copies may run; only the first one installs anything.
+if (!window.__dynamicDragDropDashboardInstalled) {
+  window.__dynamicDragDropDashboardInstalled = VERSION;
+  installDragAndDropCardFeatures(DragAndDropCard, VERSION);
+}

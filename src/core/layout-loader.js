@@ -5,6 +5,12 @@
  * then builds the active responsive layout and refreshes post-load UI state.
  */
 
+import { normalizeStorageMode, lovelaceLayoutSnapshot } from '../storage/storage-mode.js';
+
+export function mergeInitialLayoutOptions(baseline, overrides, normalize = value => value) {
+  return { ...normalize(baseline), ...normalize(overrides) };
+}
+
 export function selectInitialLayoutSnapshot(backendSnapshot, localSnapshot, { preferLocal = false } = {}) {
   if (preferLocal && localSnapshot && typeof localSnapshot === 'object') {
     return { source: 'local-replacement', snapshot: localSnapshot };
@@ -126,13 +132,17 @@ const initialLoadMethods = {
     } catch {}
   },
 
-  _runtimeLayoutCacheKeys_() {
+  _runtimeLayoutCacheKeys_(storageKey = this.storageKey) {
     const keys = [];
     const add = (value) => {
       const key = String(value || '').trim();
       if (key && !keys.includes(key)) keys.push(key);
     };
-    add(this.storageKey);
+    add(storageKey);
+    // A resolved storage key is the complete cache identity. Writing the same
+    // snapshot under card-id/config aliases allowed copied DEV/PRD dashboards
+    // to read each other's runtime state when one primary entry was absent.
+    if (keys.length) return keys;
     add(this._config?.storage_key);
     add(this._config?.storageKey);
     add(this.config?.storage_key);
@@ -143,10 +153,10 @@ const initialLoadMethods = {
     return keys;
   },
 
-  _readRuntimeLayoutCache_() {
+  _readRuntimeLayoutCache_(storageKey = this.storageKey) {
     try {
       const cache = globalThis.__ddcRuntimeLayoutCache;
-      for (const key of this._runtimeLayoutCacheKeys_?.() || []) {
+      for (const key of this._runtimeLayoutCacheKeys_?.(storageKey) || []) {
         if (!cache?.has?.(key)) continue;
         const cached = cache.get(key);
         const normalized = this._normalizeDashboardPayload_?.(this._cloneJson_?.(cached) || cached) || null;
@@ -158,11 +168,11 @@ const initialLoadMethods = {
     }
   },
 
-  _readLocalLayoutSnapshot_() {
-    if (!this.storageKey) return null;
+  _readLocalLayoutSnapshot_(storageKey = this.storageKey) {
+    if (!storageKey) return null;
     try {
       return this._normalizeDashboardPayload_(
-        JSON.parse(localStorage.getItem(`ddc_local_${this.storageKey}`) || 'null')
+        JSON.parse(localStorage.getItem(`ddc_local_${storageKey}`) || 'null')
       );
     } catch {
       return null;
@@ -189,13 +199,13 @@ const initialLoadMethods = {
     return false;
   },
 
-  _writeRuntimeLayoutCache_(payload = null) {
+  _writeRuntimeLayoutCache_(payload = null, storageKey = this.storageKey) {
     try {
       const normalized = this._normalizeDashboardPayload_?.(payload) || null;
       if (!normalized || !Array.isArray(normalized.cards) || !normalized.cards.length) return;
       if (!globalThis.__ddcRuntimeLayoutCache) globalThis.__ddcRuntimeLayoutCache = new Map();
       const snapshot = this._cloneJson_?.(normalized) || normalized;
-      for (const key of this._runtimeLayoutCacheKeys_?.() || []) {
+      for (const key of this._runtimeLayoutCacheKeys_?.(storageKey) || []) {
         if (key) globalThis.__ddcRuntimeLayoutCache.set(key, snapshot);
       }
     } catch {}
@@ -207,8 +217,15 @@ const initialLoadMethods = {
       if (this.__booting) return;
       const loadSeq = (Number(this.__initialLoadSeq || 0) || 0) + 1;
       this.__initialLoadSeq = loadSeq;
+      const storageOperation = this._captureStorageOperation_?.(this.storageKey) || {
+        key: String(this.storageKey || '').trim(),
+        epoch: Number(this.__storageIdentityEpoch || 0) || 0,
+        dashboardRoute: null,
+      };
+      const loadStorageKey = storageOperation.key;
       const isCurrentLoad = () => (
         loadSeq === this.__initialLoadSeq
+        && (this._isStorageOperationCurrent_?.(storageOperation) ?? String(this.storageKey || '').trim() === loadStorageKey)
         && !this.__dashboardConverterImporting
         && !this.__ddcImportingDashboard
       );
@@ -237,18 +254,19 @@ const initialLoadMethods = {
         this._dbgPush('boot', 'Initial load start', { force });
 
         const __rebuildAfter = [];
-        let saved = null;
+        const useLovelace = normalizeStorageMode(this._config?.storage_mode) === 'lovelace';
+        let saved = useLovelace ? lovelaceLayoutSnapshot(this.__lastSetConfigSource || this._config) : null;
         let local = null;
         let syncedWithBackend = false;
         let authoritativeBackendSnapshot = null;
 
-        if (this.storageKey) {
-          local = this._readLocalLayoutSnapshot_?.();
+        if (!useLovelace && loadStorageKey) {
+          local = this._readLocalLayoutSnapshot_?.(loadStorageKey);
         }
         const preferLocalReplacement = !!(
           local
-          && this.storageKey
-          && this._hasPendingDashboardReplacement_?.()
+          && loadStorageKey
+          && this._hasPendingDashboardReplacement_?.(loadStorageKey)
         );
 
         // A converted dashboard is a deliberate full replacement. If it was
@@ -259,8 +277,9 @@ const initialLoadMethods = {
           this._dbgPush('boot', 'Using pending imported dashboard snapshot');
           if (this._backendOK) {
             try {
-              await this._saveLayoutToBackend(this.storageKey, this._normalizeDashboardPayload_(local));
-              this._clearPendingDashboardReplacement_?.();
+              await this._saveLayoutToBackend(loadStorageKey, this._normalizeDashboardPayload_(local));
+              if (!isCurrentLoad()) return;
+              this._clearPendingDashboardReplacement_?.(loadStorageKey);
               authoritativeBackendSnapshot = this._cloneJson_?.(local) || local;
               syncedWithBackend = true;
               this._dbgPush('boot', 'Committed pending imported dashboard to backend');
@@ -268,9 +287,9 @@ const initialLoadMethods = {
               this._dbgPush('boot', 'Pending dashboard commit failed; keeping local replacement', { error: String(e) });
             }
           }
-        } else if (this._backendOK && this.storageKey) {
+        } else if (!useLovelace && this._backendOK && loadStorageKey) {
           try {
-            saved = await this._loadLayoutFromBackend(this.storageKey);
+            saved = await this._loadLayoutFromBackend(loadStorageKey);
             syncedWithBackend = !!(saved && typeof saved === 'object');
           } catch (e) {
             this._dbgPush('boot', 'Backend load failed', { error: String(e) });
@@ -285,7 +304,7 @@ const initialLoadMethods = {
         const selectedInitialSnapshot = selectInitialLayoutSnapshot(saved, local, {
           preferLocal: preferLocalReplacement,
         });
-        if (selectedInitialSnapshot.source === 'backend') {
+        if (!useLovelace && selectedInitialSnapshot.source === 'backend') {
           saved = selectedInitialSnapshot.snapshot;
           authoritativeBackendSnapshot = this._cloneJson_?.(saved) || saved;
           syncedWithBackend = true;
@@ -293,26 +312,30 @@ const initialLoadMethods = {
           saved = selectedInitialSnapshot.snapshot;
         }
 
-        // The shared backend is authoritative whenever it is reachable. A browser-local
-        // timestamp may be newer because of clock skew or an old offline session and must
-        // never overwrite a valid shared snapshot during refresh.
+        // As in v2.0.8, a successfully loaded backend snapshot is the
+        // authoritative dashboard state. Mirror it locally for recovery, but
+        // never rewrite it from the embedded Lovelace card during startup.
         if (syncedWithBackend) {
-          this._dbgPush('boot', 'Using authoritative backend snapshot');
+          this._dbgPush('boot', 'Using authoritative backend layout snapshot');
           try {
-            localStorage.setItem(`ddc_local_${this.storageKey}`, JSON.stringify(saved));
+            localStorage.setItem(`ddc_local_${loadStorageKey}`, JSON.stringify(saved));
           } catch {}
-          try { this._writeRuntimeLayoutCache_?.(saved); } catch {}
+          try { this._writeRuntimeLayoutCache_?.(saved, loadStorageKey); } catch {}
         }
 
-        // Fallback: localStorage (and migrate to backend if possible)
-        if (!saved && this.storageKey) {
+        // Fallback: localStorage. It may initialize a genuinely missing backend
+        // key, but it must never replace an existing shared snapshot merely
+        // because one GET failed. That would let a stale browser profile wipe
+        // newer server data during startup.
+        if (!saved && loadStorageKey) {
           if (local) {
             this._dbgPush('boot', 'Found local snapshot', { bytes: JSON.stringify(local).length });
 
-            if (this._backendOK) {
+            if (this._backendOK && this._canInitializeBackendFromLocal_?.(loadStorageKey)) {
               try {
-                await this._saveLayoutToBackend(this.storageKey, this._normalizeDashboardPayload_(local));
-                this._clearPendingDashboardReplacement_?.();
+                await this._saveLayoutToBackend(loadStorageKey, this._normalizeDashboardPayload_(local));
+                if (!isCurrentLoad()) return;
+                this._clearPendingDashboardReplacement_?.(loadStorageKey);
                 this._dbgPush('boot', 'Migrated local -> backend');
                 saved = local;
                 syncedWithBackend = true;
@@ -322,6 +345,10 @@ const initialLoadMethods = {
               }
             } else {
               saved = local;
+              if (this._backendOK) {
+                this._scheduleBackendSnapshotRetry_?.('backend-load-retry');
+                this._dbgPush('boot', 'Kept local snapshot read-only until the backend can be verified');
+              }
             }
           }
         }
@@ -333,8 +360,8 @@ const initialLoadMethods = {
         }
 
         const hasSavedCards = Array.isArray(saved?.cards) && saved.cards.length > 0;
-        if (!hasSavedCards && (options?.preserveExistingOnEmpty || this._isHaEditorBlockingEmptyState_?.())) {
-          const cached = this._readRuntimeLayoutCache_?.();
+        if (!useLovelace && !hasSavedCards && (options?.preserveExistingOnEmpty || this._isHaEditorBlockingEmptyState_?.())) {
+          const cached = this._readRuntimeLayoutCache_?.(loadStorageKey);
           if (cached?.cards?.length) {
             this._dbgPush('boot', 'Using runtime layout cache for empty editor refresh', {
               reason: options?.reason || 'ha-editor',
@@ -351,34 +378,31 @@ const initialLoadMethods = {
         if (!isCurrentLoad()) return;
 
         const syncedSnapshot = authoritativeBackendSnapshot || (syncedWithBackend ? saved : null);
-        this.__lastSyncedDashboardPayload = syncedSnapshot
-          ? (this._cloneJson_?.(this._normalizeDashboardPayload_(syncedSnapshot)) || syncedSnapshot)
-          : null;
+        this._recordLastSyncedDashboardPayload_?.(
+          loadStorageKey,
+          syncedSnapshot
+            ? (this._normalizeDashboardPayload_(syncedSnapshot) || syncedSnapshot)
+            : null
+        );
 
         this._setDashboardPackages_(saved?.packages || []);
 
         // Snapshot of YAML before we overlay anything
         const yamlCfg = { ...(this._config || {}) };
 
-        // 1) Apply persisted options as baseline
-          if (saved?.options) {
-    const { storage_key, ...optsNoKey } = saved.options;
-    // Apply all persisted options, including background-related fields. Previously, the
-    // backgrounds were stripped to avoid overwriting YAML values. However, this
-    // prevented users from changing the card and container backgrounds or background
-    // modes via the settings UI. Including them here allows saved options (and
-    // consequently YAML updates) to take effect on reload.
-    this._applyImportedOptions(optsNoKey, true);
-  } else if (typeof saved?.grid === 'number') {
-          this._applyImportedOptions({ grid: saved.grid }, true);
-        }
+        // Resolve both sources before applying effects. YAML keeps precedence,
+        // while normalization of each source resolves legacy aliases first.
+        const { storage_key: ignoredStorageKey, ...persistedOptions } = saved?.options || {};
+        const baselineOptions = saved?.options
+          ? persistedOptions
+          : (typeof saved?.grid === 'number' ? { grid: saved.grid } : {});
 
         // 2) Overlay explicit YAML options (take precedence)
         const overrideKeys = [
-          'storage_key','grid','drag_live_snap','auto_save','auto_save_debounce',
-          'container_background','card_background','card_overflow','card_shadow','card_shadow_intensity','debug','disable_overlap',
+          'storage_key','edit_permissions','grid','drag_live_snap','auto_save','auto_save_debounce',
+          'container_radius','container_border','container_background','card_background','card_overflow','card_shadow','card_shadow_intensity','debug','disable_overlap',
           'container_size_mode','container_fixed_width','container_fixed_height',
-          'container_preset','container_preset_orientation','tabs','tabs_position','tabs_size','default_tab','hide_tabs_when_single','layers_enabled','layers_button_details','layers', 'auto_resize_cards', 'auto_viewport_max_width', 'auto_scale_max', 'optimize_for_mobile', 'mobile_dynamic_behavior', 'do_not_resize_text', 'outer_grid_buffer', 'outer_grid_buffer_cells', 'play-loading_animation', 'dashboard_theme_enabled', 'dashboard_theme', 'dashboard_theme_override_all_design', 'background_mode', 'background_image', 'background_dynamic', 'background_particles', 'background_youtube', 'responsive_viewports', 'responsive_viewport_aspect_locks',
+          'container_preset','container_preset_orientation','tabs','tabs_position','tabs_size','tabs_center_on_canvas','tabs_style','default_tab','hide_tabs_when_single','tabs_auto_return_enabled','tabs_auto_return_tab','tabs_auto_return_delay','sidebar_enabled','sidebar_type','sidebar_appearance','sidebar_items','sidebar_header','sidebar_canvas_height','sidebar_cards','layers_enabled','layers_button_details','layers', 'auto_resize_cards', 'auto_viewport_max_width', 'auto_scale_max', 'optimize_for_mobile', 'mobile_dynamic_behavior', 'do_not_resize_text', 'outer_grid_buffer', 'outer_grid_buffer_cells', 'play-loading_animation', 'dashboard_theme_enabled', 'dashboard_theme', 'dashboard_theme_override_all_design', 'background_mode', 'background_image', 'background_dynamic', 'background_particles', 'background_youtube', 'responsive_viewports', 'responsive_viewport_aspect_locks',
           // Ensure screen saver settings from YAML override persisted options on reload. Without
           // including these keys, the screensaver delay can become stuck because the overlay
           // of YAML values never occurs. Adding them keeps behaviour consistent with other
@@ -424,9 +448,11 @@ const initialLoadMethods = {
             delete cfgOpts.tabs_position;
           }
         }
-        if (Object.keys(cfgOpts).length) {
-          this._applyImportedOptions(cfgOpts, true);
-        }
+        const mergedOptions = mergeInitialLayoutOptions(
+          baselineOptions, cfgOpts,
+          options => this._normalizeDashboardOptions_?.(options, { forceAutoResize: true }) || options
+        );
+        if (Object.keys(mergedOptions).length) this._applyImportedOptions(mergedOptions, true);
         if (!loadingAnimation) loadingAnimation = this._beginDashboardLoadingAnimation_?.();
 
         try {
@@ -445,7 +471,7 @@ const initialLoadMethods = {
         const targetLayoutKey = this._getRuntimeResponsiveLayoutKey_?.(targetProfile, targetOrientation) || this._getResponsiveLayoutKey_(targetProfile, targetOrientation);
         const entriesToBuild = nextResponsiveLayouts?.[targetLayoutKey] || [];
         const hasExistingRealCards = !!this.cardContainer?.querySelector?.('.card-wrapper:not(.ddc-placeholder)');
-        if (!entriesToBuild.length && options?.preserveExistingOnEmpty && hasExistingRealCards) {
+        if (!useLovelace && !entriesToBuild.length && options?.preserveExistingOnEmpty && hasExistingRealCards) {
           this._dbgPush('boot', 'Skipped empty refresh; preserving current dashboard', {
             profile: targetLayoutKey,
             reason: options?.reason || 'refresh',
@@ -455,34 +481,33 @@ const initialLoadMethods = {
           return;
         }
 
-        this.sidebarCards = [];
         this._responsiveLayouts = nextResponsiveLayouts;
+        let serializedResponsiveLayouts;
         try {
           const primaryCards = this._responsiveLayouts?.[this._getPrimaryResponsiveLayoutKey_()] || saved?.cards || [];
+          serializedResponsiveLayouts = this._serializeResponsiveLayouts_(this._responsiveLayouts, primaryCards);
           this._config = {
             ...(this._config || {}),
             cards: this._cloneJson_(primaryCards),
-            responsive_layouts: this._cloneJson_(this._serializeResponsiveLayouts_(this._responsiveLayouts, primaryCards)),
+            responsive_layouts: serializedResponsiveLayouts,
           };
         } catch {}
         this._activeResponsiveProfile = targetProfile;
         this._activeResponsiveLayoutKey = targetLayoutKey;
 
         await this._buildCardsFromEntries_(entriesToBuild, 0, {
-          replaceExisting: !!options?.replaceExisting,
+          replaceExisting: useLovelace || !!options?.replaceExisting,
         });
+        if (!isCurrentLoad()) return;
 
         if (entriesToBuild.length) {
           this._writeRuntimeLayoutCache_?.({
             version: 3,
             options: this._exportableOptions?.() || {},
             cards: this._responsiveLayouts?.[this._getPrimaryResponsiveLayoutKey_?.()] || entriesToBuild,
-            responsive_layouts: this._cloneJson_(this._serializeResponsiveLayouts_?.(
-              this._responsiveLayouts,
-              this._responsiveLayouts?.[this._getPrimaryResponsiveLayoutKey_?.()] || entriesToBuild
-            )),
+            responsive_layouts: this._cloneJson_(serializedResponsiveLayouts),
             packages: this._exportDashboardPackages_?.() || [],
-          });
+          }, loadStorageKey);
           this._dbgPush('boot', 'Layout applied', {
             count: entriesToBuild.length,
             profile: targetLayoutKey,
@@ -504,7 +529,7 @@ const initialLoadMethods = {
         try {
           __rebuildAfter.forEach((el) => {
             try {
-              el.dispatchEvent(new Event('ll-rebuild', { bubbles: true, composed: true }));
+              this._rebuildOnce(el);
             } catch {}
           });
         } catch {}
@@ -512,6 +537,10 @@ const initialLoadMethods = {
         const loadStillCurrent = isCurrentLoad();
         this._loading = false;
         this.__booting = false;
+        if (this.__pendingStorageConfigReload) {
+          this.__pendingStorageConfigReload = false;
+          queueMicrotask(() => this._initialLoad(true, { replaceExisting: true }));
+        }
         if (!loadStillCurrent) {
           this.__suppressCardAnimation = previousSuppressCardAnimation;
           this._setAutoScaleStartupVisualState_?.(false);

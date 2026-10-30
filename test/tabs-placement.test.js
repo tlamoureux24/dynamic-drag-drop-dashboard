@@ -13,6 +13,32 @@ import { installCardBuilderMethods } from '../src/cards/card-renderer.js';
 class TabsHarness {}
 installTabsLayoutMethods(TabsHarness.prototype);
 
+function createNode() {
+  return {
+    parentNode: null,
+    children: [],
+    appendChild(child) {
+      child.parentNode?.removeChild?.(child);
+      this.children.push(child);
+      child.parentNode = this;
+      return child;
+    },
+    insertBefore(child, reference) {
+      child.parentNode?.removeChild?.(child);
+      const index = this.children.indexOf(reference);
+      this.children.splice(index < 0 ? this.children.length : index, 0, child);
+      child.parentNode = this;
+      return child;
+    },
+    removeChild(child) {
+      const index = this.children.indexOf(child);
+      if (index >= 0) this.children.splice(index, 1);
+      child.parentNode = null;
+      return child;
+    },
+  };
+}
+
 function createHarness({ tabs, hideTabsWhenSingle, hasLayerMenu = false }) {
   const classes = new Set();
   const attributes = new Set();
@@ -74,33 +100,10 @@ test('fixed dashboard tabs move inside the canvas while editing and return after
     tabs: [{ id: 'home' }, { id: 'lights' }],
     hideTabsWhenSingle: true,
   });
-  const makeNode = () => ({
-    parentNode: null,
-    children: [],
-    appendChild(child) {
-      child.parentNode?.removeChild?.(child);
-      this.children.push(child);
-      child.parentNode = this;
-      return child;
-    },
-    insertBefore(child, reference) {
-      child.parentNode?.removeChild?.(child);
-      const index = this.children.indexOf(reference);
-      this.children.splice(index < 0 ? this.children.length : index, 0, child);
-      child.parentNode = this;
-      return child;
-    },
-    removeChild(child) {
-      const index = this.children.indexOf(child);
-      if (index >= 0) this.children.splice(index, 1);
-      child.parentNode = null;
-      return child;
-    },
-  });
-  const root = makeNode();
+  const root = createNode();
   root.classList = harness.rootEl.classList;
-  const tabsBar = makeNode();
-  const scaleOuter = makeNode();
+  const tabsBar = createNode();
+  const scaleOuter = createNode();
   root.appendChild(tabsBar);
   root.appendChild(scaleOuter);
   harness.rootEl = root;
@@ -136,6 +139,40 @@ test('fixed dashboard tabs move inside the canvas while editing and return after
   assert.equal(classes.has('ddc-fixed-canvas-tabs-bottom'), false);
 });
 
+test('Sidebar tabs stay mounted in the Sidebar navigation slot', () => {
+  const { harness, classes } = createHarness({
+    tabs: [{ id: 'home' }, { id: 'lights' }],
+    hideTabsWhenSingle: true,
+  });
+  const root = createNode();
+  root.classList = harness.rootEl.classList;
+  const tabsBar = createNode();
+  const scaleOuter = createNode();
+  const sidebarHost = createNode();
+  const navigation = createNode();
+  sidebarHost.querySelector = selector => selector === '.ddc-sidebar-navigation' ? navigation : null;
+  sidebarHost.appendChild(navigation);
+  root.appendChild(sidebarHost);
+  root.appendChild(tabsBar);
+  root.appendChild(scaleOuter);
+  harness.rootEl = root;
+  harness.tabsBar = tabsBar;
+  harness.__scaleOuter = scaleOuter;
+  harness.sidebarHost = sidebarHost;
+  harness._isSidebarEnabled_ = () => true;
+  harness._isSidebarNavigationActive_ = () => true;
+
+  harness._syncTabsPlacement_();
+
+  assert.equal(tabsBar.parentNode, navigation);
+  assert.equal(classes.has('ddc-sidebar-layout'), true);
+  assert.equal(classes.has('ddc-tabs-bottom-layout'), false);
+
+  harness._syncTabsPlacement_();
+  assert.equal(tabsBar.parentNode, navigation);
+  assert.equal(navigation.children.filter(child => child === tabsBar).length, 1);
+});
+
 test('layer menu keeps the tab bar fixed when the only tab is hidden', () => {
   const { harness, classes, attributes } = createHarness({
     tabs: [{ id: 'home' }],
@@ -168,7 +205,7 @@ test('tab moves at list boundaries are safe no-ops', () => {
   assert.deepEqual(moveTabById(source, 'missing', 1), source);
 });
 
-test('tab bar sizing stays within touch-friendly limits and updates CSS tokens', () => {
+test('tab bar sizing supports 1–1000 percent and updates CSS tokens', () => {
   const values = new Map();
   const harness = new TabsHarness();
   harness.style = {
@@ -176,18 +213,18 @@ test('tab bar sizing stays within touch-friendly limits and updates CSS tokens',
       values.set(name, value);
     },
   };
-  harness.tabsSize = 65;
+  harness.tabsSize = 0;
 
   harness._syncTabsSize_();
 
-  assert.equal(harness.tabsSize, 80);
-  assert.equal(values.get('--ddc-tabs-button-height'), '44.8px');
-  assert.equal(values.get('--ddc-tabs-icon-size'), '19.2px');
+  assert.equal(harness.tabsSize, 1);
+  assert.equal(values.get('--ddc-tabs-button-height'), '0.56px');
+  assert.equal(values.get('--ddc-tabs-icon-size'), '0.24px');
 
-  harness.tabsSize = 150;
+  harness.tabsSize = 1001;
   harness._syncTabsSize_();
-  assert.equal(harness.tabsSize, 140);
-  assert.equal(values.get('--ddc-tabs-button-height'), '78.4px');
+  assert.equal(harness.tabsSize, 1000);
+  assert.equal(values.get('--ddc-tabs-button-height'), '560px');
 });
 
 test('tab and card overflow options normalize legacy aliases', () => {
@@ -196,6 +233,8 @@ test('tab and card overflow options normalize legacy aliases', () => {
   const harness = new ConfigHarness();
 
   assert.equal(normalizeTabsSize('115'), 115);
+  for (const value of [1, 65, 150, 777, 1000]) assert.equal(normalizeTabsSize(value), value);
+  for (const value of [undefined, null, '', ' ']) assert.equal(normalizeTabsSize(value), 100);
   assert.equal(normalizeTabsSize('invalid'), 100);
   assert.equal(normalizeCardOverflow('HIDDEN'), 'hidden');
   assert.equal(normalizeCardOverflow('scroll'), 'auto');
@@ -244,4 +283,94 @@ test('fixed tab bars center between both Home Assistant side gutters', async () 
     source,
     /\.ddc-root\.ddc-fixed-canvas-tabs-bottom[\s\S]*?left:\s*calc\(var\(--ddc-left-gutter,\s*0px\)\s*\+\s*12px\)\s*!important;[\s\S]*?right:\s*calc\(var\(--ddc-right-gutter,\s*0px\)\s*\+\s*12px\)\s*!important;/,
   );
+});
+
+test('canvas-anchored tabs track both axes and release listeners when disabled', () => {
+  const oldWindow = globalThis.window;
+  const oldGetComputedStyle = globalThis.getComputedStyle;
+  const oldRAF = globalThis.requestAnimationFrame, oldCancel = globalThis.cancelAnimationFrame;
+  const frames = new Map();
+  let serial = 0, writes = 0, reads = 0;
+  globalThis.requestAnimationFrame = fn => { frames.set(++serial, fn); return serial; };
+  globalThis.cancelAnimationFrame = id => frames.delete(id);
+  const frame = () => { const jobs = [...frames.values()]; frames.clear(); jobs.forEach(fn => fn()); };
+  const listeners = new Map();
+  globalThis.window = {addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name)};
+  globalThis.getComputedStyle = () => ({position: 'fixed'});
+  try {
+    const host = new TabsHarness();
+    const values = new Map(), classes = new Set();
+    let rect = {left: 120, top: 80, width: 600, bottom: 480};
+    host.tabsCenterOnCanvas = true;
+    host.style = {setProperty: () => assert.fail('must not invalidate styles of embedded cards')};
+    host.tabsBar = {style: {getPropertyValue: key => values.get(key), setProperty: (key, value) => { writes++; values.set(key, value); }}, classList: {toggle: (key, on) => on ? classes.add(key) : classes.delete(key), remove: key => classes.delete(key)}};
+    host.cardContainer = {getBoundingClientRect: () => { reads++; return rect; }};
+    host._syncTabsCanvasCenter_();
+    assert.equal(values.get('--ddc-tabs-canvas-center'), '420px');
+    assert.equal(values.get('--ddc-tabs-canvas-top'), '80px');
+    assert.equal(values.get('--ddc-tabs-canvas-bottom'), '480px');
+    rect = {left: 100, top: 20, width: 300, bottom: 220};
+    for (let i = 0; i < 20; i++) listeners.get('scroll')();
+    assert.equal(frames.size, 1);
+    assert.equal(reads, 1);
+    frame();
+    assert.equal(values.get('--ddc-tabs-canvas-center'), '250px');
+    assert.equal(values.get('--ddc-tabs-canvas-bottom'), '220px');
+    const priorWrites = writes;
+    listeners.get('scroll')();
+    frame();
+    assert.equal(writes, priorWrites);
+    listeners.get('scroll')();
+    host.tabsCenterOnCanvas = false;
+    host._syncTabsCanvasCenter_();
+    assert.equal(classes.size, 0);
+    assert.equal(listeners.size, 0);
+    assert.equal(frames.size, 0);
+  } finally {
+    globalThis.requestAnimationFrame = oldRAF;
+    globalThis.cancelAnimationFrame = oldCancel;
+    globalThis.window = oldWindow;
+    globalThis.getComputedStyle = oldGetComputedStyle;
+  }
+});
+
+test('tab changes leave none/image and mounted media backgrounds untouched', () => {
+  const host=new TabsHarness();
+  let mode='none', applied=0;
+  host._getDashboardBackgroundMode_=()=>mode;
+  host._applyBackgroundFromConfig=()=>applied++;
+  host._ensureTabBackground_();
+  mode='image';host._ensureTabBackground_();
+  mode='youtube';host.__ytWrap={isConnected:true};host._ensureTabBackground_();
+  mode='particles';host.__particlesHost={isConnected:true};host._ensureTabBackground_();
+  assert.equal(applied,0);
+  host.__particlesHost.isConnected=false;host._ensureTabBackground_();
+  assert.equal(applied,1);
+});
+
+test('selection-only updates preserve tab buttons and rebuild when configuration changes', () => {
+  const h=new TabsHarness();
+  h.tabs=[{id:'a',icon:'custom:one'},{id:'b',icon:'custom:two'}];
+  h.activeTab='a';
+  const button=(id,active)=>{
+    const classes=new Set(active?['active']:[]),attrs={};
+    return {dataset:{tabId:id},attrs,classList:{contains:k=>classes.has(k),toggle:(k,on)=>on?classes.add(k):classes.delete(k)},setAttribute:(k,v)=>attrs[k]=v};
+  };
+  const a=button('a',true),b=button('b',false),buttons=[a,b];
+  h.tabsBar={querySelector:()=>({}),querySelectorAll:()=>buttons};
+  h.__renderedTabsBar=h.tabsBar;
+  h.__renderedTabsSignature=h._tabRenderSignature_();
+  let renders=0,centered;
+  h._renderTabs=()=>renders++;
+  h._centerTabButtonInScroller_=btn=>centered=btn;
+  h._updateTabOverflowShadows_=()=>{};
+  h.activeTab='b';h._updateActiveTabSelection_();
+  assert.equal(renders,0);
+  assert.equal(centered,b);
+  assert.equal(a.attrs['aria-selected'],'false');
+  assert.equal(a.attrs.tabindex,'-1');
+  assert.equal(b.attrs['aria-selected'],'true');
+  assert.equal(b.attrs.tabindex,'0');
+  h.tabs[1].icon='custom:changed';h._updateActiveTabSelection_();
+  assert.equal(renders,1);
 });

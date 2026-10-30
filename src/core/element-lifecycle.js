@@ -27,6 +27,7 @@ export function shouldLoadBackendSnapshotAfterProbe(instance = null) {
 
 const lifecycleMethods = {
   _queueBackendRefresh_(reason = 'backend-refresh') {
+    if (this._getStorageMode_?.() === 'lovelace') return false;
     if (reason) this.__backendRefreshReason = String(reason);
     this.__backendRefreshPending = true;
     if (this.__backendRefreshTimer) return true;
@@ -54,6 +55,7 @@ const lifecycleMethods = {
   },
 
   _scheduleBackendProbeRetry_() {
+    if (this._getStorageMode_?.() === 'lovelace') return false;
     if (this.__backendProbeRetryTimer || this.__backendProbePending || this._backendOK) return false;
     if (!this.storageKey || !this._hasHassApi_?.()) return false;
     const attempt = (Number(this.__backendProbeRetryAttempts || 0) || 0) + 1;
@@ -69,6 +71,24 @@ const lifecycleMethods = {
       if (this.__backendProbePending || this._backendOK) return;
       this.__probed = false;
       this.hass = this._hass;
+    }, delays[attempt - 1]);
+    return true;
+  },
+
+  _scheduleBackendSnapshotRetry_(reason = 'backend-load-retry') {
+    if (this._getStorageMode_?.() === 'lovelace') return false;
+    if (this.__backendSnapshotRetryTimer || !this._backendOK || !this.storageKey) return false;
+    const attempt = (Number(this.__backendSnapshotRetryAttempts || 0) || 0) + 1;
+    const delays = [500, 1500, 5000, 15000];
+    if (attempt > delays.length) return false;
+    this.__backendSnapshotRetryAttempts = attempt;
+    this.__backendSnapshotRetryTimer = setTimeout(() => {
+      this.__backendSnapshotRetryTimer = 0;
+      if (!this.isConnected || shouldDeferBackendRefresh(this)) return;
+      this._initialLoad?.(true, {
+        preserveExistingOnEmpty: true,
+        reason,
+      });
     }, delays[attempt - 1]);
     return true;
   },
@@ -114,6 +134,8 @@ const lifecycleMethods = {
   },
 
   connectedCallback() {
+    this._installTouchPan_?.();
+    this._installLongPressToEnterEdit?.();
       if (this._isInHaEditorPreview?.()) {
         this.__haConfigPreviewMode = true;
         this._renderHaConfigPreview_?.();
@@ -134,6 +156,7 @@ const lifecycleMethods = {
         requestAnimationFrame(() => this._syncPageBackgroundToView_?.());
         this._ensureScreenSaverStyles?.();
         this._updateScreensaverSettings?.();
+        this._updateTabsAutoReturnSettings_?.();
       } catch {}
 
       if (!this.__autoFillAfterDragHandler) {
@@ -209,10 +232,23 @@ const lifecycleMethods = {
 
   disconnectedCallback() {
       try { this._stopDashboardLocalization_?.(); } catch {}
+      this._closeLayersMenu_?.({ render: false });
+      // A dashboard navigation can detach the old card while backend reads,
+      // card builds, or a debounced autosave are still pending. Invalidate all
+      // of them so a detached DEV card cannot commit after PRD is mounted.
+      const interruptedStorageWork = !!(this.__booting || this._loading);
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+      this.__storageIdentityEpoch = (Number(this.__storageIdentityEpoch || 0) || 0) + 1;
+      this.__initialLoadSeq = (Number(this.__initialLoadSeq || 0) || 0) + 1;
+      this.__cardBuildSeq = (Number(this.__cardBuildSeq || 0) || 0) + 1;
+      if (interruptedStorageWork) {
+        this.__backendRefreshPending = true;
+        this.__backendRefreshReason = 'reconnected-after-interrupted-load';
+      }
       try { this._clearEditorAppearance_?.(); } catch {}
       try { this._uninstallGridObservers_(); } catch {}
       try { this._setHeaderVisible_?.(true); this._setSidebarVisible_?.(true); } catch {}
-      try { this._applyHaChromeVisibility_?.(); } catch {}
       try { this._clearPageBackground_?.(); } catch {}
       try { this._stopDynamicBackgroundClock_?.(); } catch {}
 
@@ -234,6 +270,7 @@ const lifecycleMethods = {
         this.__containerBlankMouseDown = null;
       }
       try { this._uninstallMiddleMousePan_?.(); } catch {}
+      try { this._closeConnectorPointMenu_?.(); } catch {}
       this.__uiBindingsReady = false;
 
       try { this._destroyParticles_?.(); } catch {}
@@ -252,6 +289,7 @@ const lifecycleMethods = {
       try { this._clearBubblePopupHashListeners_?.(); } catch {}
 
       try {
+        this._detachTabsAutoReturnListeners_?.();
         if (this._screensaverTimer) { clearTimeout(this._screensaverTimer); this._screensaverTimer = null; }
         if (this._clockInterval) { clearInterval(this._clockInterval); this._clockInterval = null; }
         if (this.__sidebarClockInterval) { clearInterval(this.__sidebarClockInterval); this.__sidebarClockInterval = null; }
@@ -270,6 +308,8 @@ const lifecycleMethods = {
       this.__ddcResizeObs = null;
 
       this._stopScaleWatch?.();
+      this._stopTabsCanvasCenter_?.();
+      this._clearSidebarGutterCache_?.();
 
       if (this.__ddcOnWinResize) {
         window.removeEventListener('resize', this.__ddcOnWinResize);
@@ -287,19 +327,9 @@ const lifecycleMethods = {
       try { this._removeEmptyPlaceholderCentering_?.(); } catch {}
       try { this._destroySelectionArrangeToolbar_?.(); } catch {}
 
-      if (this.__lpInstalled && this.__lpHandlers) {
-        const cont = this.cardContainer;
-        cont?.removeEventListener('mousedown', this.__lpHandlers.mouseDown);
-        window.removeEventListener('mousemove', this.__lpHandlers.mouseMove);
-        window.removeEventListener('mouseup', this.__lpHandlers.mouseUp);
-        window.removeEventListener('contextmenu', this.__lpHandlers.contextMenu);
-        cont?.removeEventListener('touchstart', this.__lpHandlers.touchStart);
-        window.removeEventListener('touchmove', this.__lpHandlers.touchMove);
-        window.removeEventListener('touchend', this.__lpHandlers.touchEnd);
-        window.removeEventListener('touchcancel', this.__lpHandlers.touchCancel);
-        this.__lpInstalled = false;
-        this.__lpHandlers = null;
-      }
+      this.__touchPanCleanup?.();
+      this.__touchPanCleanup = null;
+      this.__lpCleanup?.();
 
       try { this.__visObs?.disconnect?.(); } catch {}
       this.__visObs = null;
@@ -311,6 +341,10 @@ const lifecycleMethods = {
       if (this.__backendRefreshTimer) {
         clearTimeout(this.__backendRefreshTimer);
         this.__backendRefreshTimer = 0;
+      }
+      if (this.__backendSnapshotRetryTimer) {
+        clearTimeout(this.__backendSnapshotRetryTimer);
+        this.__backendSnapshotRetryTimer = 0;
       }
       try { clearTimeout(this.__connectorRenderSettleTimer1); } catch {}
       try { clearTimeout(this.__connectorRenderSettleTimer2); } catch {}
@@ -336,11 +370,19 @@ const lifecycleMethods = {
       this._hass = hass;
       try { this._translateDashboardUi_?.(); } catch {}
       try { this._refreshDynamicBackground_?.(); } catch {}
+      if (this.editMode && this._canEditDashboard_?.() === false) this._toggleEditMode?.(false);
+      if (hass && this.__cfgReady && !this.__booted && this._getStorageMode_?.() === 'lovelace') {
+        this.__booted = true;
+        this._initialLoad(true, { replaceExisting: true });
+      }
       const hassApiReady = !!(hass && typeof hass.callApi === 'function');
       if (!this.__probed && hassApiReady) {
         this.__probed = true;
         this.__backendProbePending = true;
-        if (!this.__booted && this.__cfgReady && this._hasFastInitialLayout_?.()) {
+        // A browser cache is only a rendering fallback. For a shared
+        // storage_key, wait for the backend probe so stale localStorage can
+        // never become the first writable source of truth.
+        if (!this.__booted && this.__cfgReady && !this.storageKey && this._hasFastInitialLayout_?.()) {
           this.__booted = true;
           this._initialLoad(false);
         }

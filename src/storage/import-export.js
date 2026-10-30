@@ -20,6 +20,30 @@ const designImportExportMethods = {
       URL.revokeObjectURL(a.href);
     },
 
+    async _persistImportedDesignConfig_() {
+      try {
+        const persisted = (await this._persistThisCardConfigToStorage_?.({
+          captureLive: false,
+        })) === true;
+        if (persisted) return 'storage';
+      } catch (error) {
+        console.warn('[ddc:import] Direct Lovelace persistence failed', error);
+      }
+
+      try {
+        const cfg = { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) };
+        this._deleteParkedSidebarOptions_(cfg);
+        this.dispatchEvent(new CustomEvent('config-changed', {
+          detail: { config: cfg },
+          bubbles: true,
+          composed: true,
+        }));
+        return 'event';
+      } catch {
+        return false;
+      }
+    },
+
   
     _getHighestZForEntries_(entries = []) {
       return (Array.isArray(entries) ? entries : []).reduce((max, entry) => {
@@ -349,13 +373,13 @@ const designImportExportMethods = {
     const ADOPT_IMPORTED_STORAGE_KEY = false;  // keep current storage_key by default
     const KNOWN_OPT_KEYS = [
       // Core + behavior
-      'grid','drag_live_snap','auto_save','auto_save_debounce',
+      'edit_permissions','grid','drag_live_snap','auto_save','auto_save_debounce',
       'debug','disable_overlap','card_mod','storage_key',
       'animate_cards','play-loading_animation','auto_resize_cards','auto_viewport_max_width','auto_scale_max','optimize_for_mobile','mobile_dynamic_behavior','do_not_resize_text','outer_grid_buffer','outer_grid_buffer_cells','responsive_viewports','responsive_viewport_aspect_locks',
       'connectors','responsive_connectors',
   
       // Visuals
-      'container_background','apply_background_to_page','card_background','card_overflow','card_shadow','card_shadow_intensity',
+      'container_radius','container_border','container_background','apply_background_to_page','card_background','card_overflow','card_shadow','card_shadow_intensity',
       'dashboard_theme_enabled','dashboard_theme','dashboard_theme_override_all_design',
   
       // Size / layout
@@ -363,7 +387,7 @@ const designImportExportMethods = {
       'container_preset','container_preset_orientation',
   
       // Tabs
-      'tabs','tabs_position','tabs_size','default_tab','hide_tabs_when_single','sidebar_enabled','sidebar_items','sidebar_style','sidebar_density','sidebar_accent','sidebar_header','sidebar_canvas_height','sidebar_cards','sidebar_home_image','sidebar_calendar_entities','layers_enabled','layers_button_details',
+      'tabs','tabs_position','tabs_size','tabs_center_on_canvas','tabs_style','default_tab','hide_tabs_when_single','sidebar_enabled','sidebar_type','sidebar_appearance','sidebar_items','sidebar_style','sidebar_density','sidebar_accent','sidebar_header','sidebar_canvas_height','sidebar_cards','sidebar_home_image','sidebar_calendar_entities','layers_enabled','layers_button_details',
       'layers',
   
       // HA chrome
@@ -392,7 +416,6 @@ const designImportExportMethods = {
         previousDashboardImporting = !!this.__ddcImportingDashboard;
         dashboardImportStarted = true;
         this.__ddcImportingDashboard = true;
-        const prevStorageKey = this.storageKey || this._config?.storage_key || null;
         this._setDashboardPackages_(json.packages || []);
   
         // -------- BACK-COMPAT: synthesize tabs if missing in older exports --------
@@ -482,6 +505,7 @@ const designImportExportMethods = {
         runtimeImportedOptions.default_tab = runtimeImportedOptions.default_tab ?? compatDefaultTab;
         runtimeImportedOptions.hide_tabs_when_single = runtimeImportedOptions.hide_tabs_when_single ?? compatHideSingle;
         if (!ADOPT_IMPORTED_STORAGE_KEY) delete runtimeImportedOptions.storage_key;
+        delete runtimeImportedOptions.storage_mode;
   
         // ---- APPLY OPTIONS (with hard-replace or merge) ----
         if (json.options) {
@@ -615,61 +639,16 @@ const designImportExportMethods = {
             try { this._writeRuntimeLayoutCache_?.(importedSnapshot); } catch {}
           }
           try { localStorage.setItem(`ddc_local_${this.storageKey || 'default'}`, JSON.stringify(importedSnapshot)); } catch {}
+          this._markPendingDashboardReplacement_?.();
         }
   
-        // ---- PERSIST IMPORTED OPTIONS TO YAML (replace semantics) ----
-        try {
-          const targetKey = this._config?.storage_key || this.storageKey || null;
-  
-          // Start from what the file had (v2) or v1 fallback
-          const importedOptions = runtimeImportedOptions;
-  
-          // Ensure tabs keys are present (either from file or from current instance state)
-          const persistOptions = {
-            ...importedOptions,
-            tabs: importedOptions.tabs ?? this.tabs ?? [],
-            tabs_position: this._normalizeTabsPosition_(importedOptions.tabs_position ?? this.tabsPosition ?? 'top'),
-            default_tab: importedOptions.default_tab
-              ?? this.defaultTab
-              ?? ((importedOptions.tabs?.[0]?.id) || (this.tabs?.[0]?.id) || 'default'),
-            hide_tabs_when_single:
-              importedOptions.hide_tabs_when_single ?? (this.hideTabsWhenSingle ?? true),
-          };
-  
-          // Unless you want to adopt the incoming storage_key, drop it
-          if (!ADOPT_IMPORTED_STORAGE_KEY) delete persistOptions.storage_key;
-  
-          if (!targetKey) {
-            console.warn('[ddc:import] No storage_key on this card; aborting YAML persist.');
-          } else {
-            const result = await this._persistOptionsToYaml?.(persistOptions, {
-              forceTargetKey: String(targetKey),
-              noDownload: true,
-              replace: true,
-              wipeUnknownKeys: true,
-            });
-            const yamlOk = !!(result && result.yamlSaved);
-            console.debug?.('[ddc:import] YAML persist result:', yamlOk);
-          }
-  
-          // SAFETY NET: push tabs into the live card config (so the UI editor/YAML reflects it immediately)
-          try {
-            const cfg = { type: 'custom:dynamic-drag-drop-dashboard', ...(this._config || {}) };
-            cfg.tabs = persistOptions.tabs;
-            cfg.tabs_position = persistOptions.tabs_position;
-            cfg.default_tab = persistOptions.default_tab;
-            cfg.hide_tabs_when_single = !!persistOptions.hide_tabs_when_single;
-            this._deleteParkedSidebarOptions_(cfg);
-  
-            this.dispatchEvent(new CustomEvent('config-changed', {
-              detail: { config: cfg },
-              bubbles: true,
-              composed: true,
-            }));
-          } catch {}
-        } catch (e) {
-          console.warn('[ddc:import] YAML persist failed:', e);
-        }
+        // Persist the complete imported card in one Lovelace transaction. The
+        // previous two-write flow first patched options and then dispatched a
+        // competing config-changed event; a setConfig refresh between those
+        // writes could rebuild the old PRD layout over the DEV import.
+        // Older/non-storage Lovelace environments fall back to one
+        // config-changed event, never a second competing writer.
+        await this._persistImportedDesignConfig_?.();
   
         // ---- BUILD CARDS ----
         {

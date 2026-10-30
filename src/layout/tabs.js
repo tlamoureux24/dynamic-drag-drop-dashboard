@@ -1,3 +1,4 @@
+import { applyTabStyle, applyTabIconColor } from '../layout/tab-style.js';
 /*
  * Dashboard tab model, tab bar rendering, and active-tab filtering.
  *
@@ -6,6 +7,72 @@
  */
 
 import { normalizeTabsSize } from '../core/config-normalization.js';
+
+const DEFAULT_TABS_AUTO_RETURN_DELAY = 5 * 60 * 1000;
+const MIN_TABS_AUTO_RETURN_DELAY = 60 * 1000;
+const MAX_TABS_AUTO_RETURN_DELAY = 24 * 60 * 60 * 1000;
+const TAB_AUTO_RETURN_ACTIVITY_EVENTS = [
+  'mousemove',
+  'mousedown',
+  'click',
+  'keydown',
+  'wheel',
+  'scroll',
+  'touchstart',
+  'touchmove',
+  'touchend',
+  'pointerdown',
+  'pointermove',
+  'pointerup',
+];
+
+export function normalizeTabsAutoReturnDelay(value) {
+  const delay = Number(value);
+  if (!Number.isFinite(delay) || delay <= 0) return DEFAULT_TABS_AUTO_RETURN_DELAY;
+  return Math.max(MIN_TABS_AUTO_RETURN_DELAY, Math.min(MAX_TABS_AUTO_RETURN_DELAY, Math.round(delay)));
+}
+
+export function resolveTabsAutoReturnTarget(tabs = [], requestedTab = '', defaultTab = '') {
+  const valid = (Array.isArray(tabs) ? tabs : [])
+    .map((tab) => String(tab?.id || '').trim())
+    .filter(Boolean);
+  const requested = String(requestedTab || '').trim();
+  const fallback = String(defaultTab || '').trim();
+  if (requested && valid.includes(requested)) return requested;
+  if (fallback && valid.includes(fallback)) return fallback;
+  return valid[0] || fallback || requested || 'default';
+}
+
+export function shouldDeferTabAutoReturnToScreensaver({
+  screenSaverEnabled = false,
+  screenSaverDelay = 0,
+  tabsAutoReturnDelay = 0,
+} = {}) {
+  if (!screenSaverEnabled) return false;
+  const screenDelay = Number(screenSaverDelay);
+  const tabDelay = Number(tabsAutoReturnDelay);
+  return Number.isFinite(screenDelay)
+    && screenDelay > 0
+    && Number.isFinite(tabDelay)
+    && tabDelay > 0
+    && screenDelay <= tabDelay;
+}
+
+export function buildTabButtonMarkup(tab = {}, tabIndex = 0, { sidebar = false } = {}) {
+  const label = tab.label ?? tab.id ?? '';
+  if (!sidebar) {
+    return `${tab.icon ? `<span class="ddc-tab-icon"><ha-icon icon="${tab.icon}"></ha-icon></span>` : ''}<span class="ddc-tab-label">${label}</span>`;
+  }
+  return `
+    <span class="ddc-sidebar-tab-indicator" aria-hidden="true"></span>
+    <span class="ddc-sidebar-tab-index" aria-hidden="true">${String(tabIndex + 1).padStart(2, '0')}</span>
+    <span class="ddc-sidebar-tab-icon" aria-hidden="true">
+      <ha-icon icon="${tab.icon || 'mdi:view-dashboard-outline'}"></ha-icon>
+    </span>
+    <span class="ddc-tab-label">${label}</span>
+    <ha-icon class="ddc-sidebar-tab-arrow" icon="mdi:chevron-right" aria-hidden="true"></ha-icon>
+  `;
+}
 
 export function moveTabById(tabs = [], tabId = '', offset = 0) {
   const next = Array.isArray(tabs) ? tabs.slice() : [];
@@ -24,6 +91,83 @@ const tabsLayoutMethods = {
     const valid = Array.isArray(this.tabs) ? this.tabs.map(t => t.id) : [];
     if (!valid.length) return this.defaultTab || 'default';
     return (tabId && valid.includes(tabId)) ? tabId : (this.defaultTab || valid[0]);
+  },
+
+  _normalizeTabsAutoReturnDelay_(value) {
+    return normalizeTabsAutoReturnDelay(value);
+  },
+
+  _resolveTabsAutoReturnTarget_(requestedTab = this.tabsAutoReturnTab) {
+    return resolveTabsAutoReturnTarget(this.tabs, requestedTab, this.defaultTab);
+  },
+
+  _clearTabsAutoReturnTimer_() {
+    if (!this.__tabsAutoReturnTimer) return;
+    clearTimeout(this.__tabsAutoReturnTimer);
+    this.__tabsAutoReturnTimer = null;
+  },
+
+  _shouldUseTabsAutoReturn_() {
+    try {
+      if (!this.tabsAutoReturnEnabled || this.editMode || this.screensaverActive || !this.isConnected) return false;
+      if (typeof this._isInHaEditorPreview === 'function' && this._isInHaEditorPreview()) return false;
+      const tabs = Array.isArray(this.tabs) ? this.tabs : [];
+      if (tabs.length < 2) return false;
+      const target = this._resolveTabsAutoReturnTarget_();
+      if (!target || this.activeTab === target) return false;
+      if (shouldDeferTabAutoReturnToScreensaver({
+        screenSaverEnabled: this.screenSaverEnabled,
+        screenSaverDelay: this.screenSaverDelay,
+        tabsAutoReturnDelay: this.tabsAutoReturnDelay,
+      })) return false;
+    } catch {
+      return false;
+    }
+    return true;
+  },
+
+  _resetTabsAutoReturnTimer_() {
+    this._clearTabsAutoReturnTimer_?.();
+    if (!this._shouldUseTabsAutoReturn_?.()) return false;
+    const delay = this._normalizeTabsAutoReturnDelay_(this.tabsAutoReturnDelay);
+    this.tabsAutoReturnDelay = delay;
+    this.__tabsAutoReturnTimer = setTimeout(() => {
+      this.__tabsAutoReturnTimer = null;
+      if (!this._shouldUseTabsAutoReturn_?.()) return;
+      const target = this._resolveTabsAutoReturnTarget_?.();
+      if (!target || target === this.activeTab || this.screensaverActive) return;
+      this._switchActiveTab_?.(target, { reason: 'auto-return' })?.catch?.((err) => {
+        console.warn('[ddc:tabs] Could not return to the configured tab', err);
+      });
+    }, delay);
+    return true;
+  },
+
+  _attachTabsAutoReturnListeners_() {
+    if (this.__tabsAutoReturnActivityHandler || typeof document === 'undefined') return;
+    this.__tabsAutoReturnActivityHandler = () => this._resetTabsAutoReturnTimer_?.();
+    this.__tabsAutoReturnActivityEvents = TAB_AUTO_RETURN_ACTIVITY_EVENTS.slice();
+    this.__tabsAutoReturnActivityEvents.forEach((eventName) => {
+      document.addEventListener(eventName, this.__tabsAutoReturnActivityHandler, true);
+    });
+  },
+
+  _detachTabsAutoReturnListeners_() {
+    this._clearTabsAutoReturnTimer_?.();
+    if (!this.__tabsAutoReturnActivityHandler || typeof document === 'undefined') return;
+    (this.__tabsAutoReturnActivityEvents || []).forEach((eventName) => {
+      document.removeEventListener(eventName, this.__tabsAutoReturnActivityHandler, true);
+    });
+    this.__tabsAutoReturnActivityHandler = null;
+    this.__tabsAutoReturnActivityEvents = null;
+  },
+
+  _updateTabsAutoReturnSettings_() {
+    this.tabsAutoReturnDelay = this._normalizeTabsAutoReturnDelay_(this.tabsAutoReturnDelay);
+    this.tabsAutoReturnTab = this._resolveTabsAutoReturnTarget_(this.tabsAutoReturnTab);
+    if (this.tabsAutoReturnEnabled && this.isConnected) this._attachTabsAutoReturnListeners_?.();
+    else this._detachTabsAutoReturnListeners_?.();
+    this._resetTabsAutoReturnTimer_?.();
   },
 
   _syncWrapperTabAssignmentsFromActiveLayout_() {
@@ -76,10 +220,42 @@ const tabsLayoutMethods = {
     setLength('--ddc-tabs-layer-icon-radius', 14);
     setLength('--ddc-tabs-font-size', 14);
     setLength('--ddc-tabs-gap', 10);
+    applyTabStyle(this);
+  },
+
+  _tabRenderSignature_() {
+    return JSON.stringify([
+      this.tabs, this.tabsPosition, this.tabsSize, this.tabsStyle,
+      !!this.hideTabsWhenSingle, !!this._isSidebarNavigationActive_?.(),
+      !!this._hasLayerMenu_?.(), this.layers, !!this.__layersMenuOpen,
+    ]);
+  },
+
+  _updateActiveTabSelection_() {
+    const bar = this.tabsBar;
+    if (!bar || this.__renderedTabsBar !== bar
+      || this.__renderedTabsSignature !== this._tabRenderSignature_()
+      || !bar.querySelector?.('.ddc-tabs-scroller')) {
+      this._renderTabs();
+      return;
+    }
+    let activeButton;
+    for (const button of bar.querySelectorAll('.ddc-tab')) {
+      const selected = button.dataset.tabId === this.activeTab;
+      if (button.classList.contains('active') !== selected) {
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-selected', String(selected));
+        button.setAttribute('tabindex', selected ? '0' : '-1');
+      }
+      if (selected) activeButton = button;
+    }
+    if (activeButton) this._centerTabButtonInScroller_?.(activeButton);
+    this._updateTabOverflowShadows_?.();
   },
 
   _renderTabs() {
     const bar = this.tabsBar; if (!bar) return;
+    this.__renderedTabsSignature = null;
     this._syncTabsSize_?.();
     const tabs = Array.isArray(this.tabs) ? this.tabs : [];
     const hasLayerMenu = !!this._hasLayerMenu_?.();
@@ -89,8 +265,8 @@ const tabsLayoutMethods = {
     const previousScrollLeft = Number(previousScrollHost?.scrollLeft || 0) || 0;
     const shouldPreserveScroll = !!this.__preserveTabsScrollOnNextRender;
     this.__preserveTabsScrollOnNextRender = false;
-    this._syncTabsPlacement_?.();
     if (!this._shouldRenderTabBar_()) {
+      this._syncTabsPlacement_?.();
       this._closeLayersMenu_?.({ render: false });
       bar.style.display = 'none';
       this.rootEl?.classList?.remove?.('ddc-tabs-left-layout');
@@ -130,7 +306,7 @@ const tabsLayoutMethods = {
     } catch {}
     if (!hasLayerMenu) this._closeLayersMenu_?.({ render: false });
     if (!this.__layersMenuOpen) this._removeLayerMenuDismissHandlers_?.();
-    for (const t of (shouldRenderTabs ? tabs : [])) {
+    for (const [tabIndex, t] of (shouldRenderTabs ? tabs : []).entries()) {
       const btn = document.createElement('button');
       btn.className = [
         'ddc-tab',
@@ -140,7 +316,13 @@ const tabsLayoutMethods = {
       btn.dataset.tabId = t.id;
       btn.title = t.label || t.id;
       btn.setAttribute('aria-label', t.label || t.id);
-      btn.innerHTML = `${t.icon ? `<ha-icon icon="${t.icon}"></ha-icon>` : ''}<span class="ddc-tab-label">${t.label ?? t.id}</span>`;
+      if (sidebarNavActive) {
+        btn.classList.add('ddc-sidebar-tab');
+        btn.innerHTML = buildTabButtonMarkup(t, tabIndex, { sidebar: true });
+      } else {
+        btn.innerHTML = buildTabButtonMarkup(t, tabIndex);
+      }
+      applyTabIconColor(btn.querySelector?.('ha-icon'), t.icon_color);
       btn.type = 'button';
       btn.addEventListener('click', (ev) => {
         ev.preventDefault?.();
@@ -167,7 +349,7 @@ const tabsLayoutMethods = {
     // card container width (scaled or unscaled). Without syncing the width,
     // the tabs could stretch to the full page width instead of aligning
     // with the drag-and-drop container.
-    try { this._syncTabsWidth_?.(); } catch {}
+    try { this._syncTabsWidth_?.({ placementSynced: true }); } catch {}
 
     try { this._refreshTabsAlignment_?.(); } catch {}
 
@@ -189,11 +371,23 @@ const tabsLayoutMethods = {
         this._centerTabButtonInScroller_?.(activeBtn);
       }
     } catch {}
+    this.__renderedTabsBar = bar;
+    this.__renderedTabsSignature = this._tabRenderSignature_();
+  },
+
+  _ensureTabBackground_() {
+    // Empty hosts are normal for none/image backgrounds. Config changes own
+    // their application and cleanup; tab changes only repair missing media.
+    const mode = this._getDashboardBackgroundMode_?.() || 'none';
+    if (mode !== 'particles' && mode !== 'youtube') return;
+    const host = mode === 'particles' ? this.__particlesHost : this.__ytWrap;
+    if (!host?.isConnected) this._applyBackgroundFromConfig?.();
   },
 
   async _switchActiveTab_(tabId, options = {}) {
     const nextTab = this._normalizeTabId?.(tabId) || tabId;
     if (!nextTab || this.activeTab === nextTab) return false;
+    const previousTabId = this.activeTab;
 
     const transitionSeq = (Number(this.__tabTransitionSeq || 0) || 0) + 1;
     this.__tabTransitionSeq = transitionSeq;
@@ -204,6 +398,7 @@ const tabsLayoutMethods = {
     // dashboard. Never let it flash while cards are being swapped or hydrated.
     try { this._hideEmptyPlaceholder?.(); } catch {}
     this.activeTab = nextTab;
+    this._resetTabsAutoReturnTimer_?.();
     try { this._closeLayersMenu_?.({ render: false }); } catch {}
     try { localStorage.setItem(`ddc_lasttab_${this.storageKey}`, nextTab); } catch {}
     try { this._syncWrapperTabAssignmentsFromActiveLayout_?.(); } catch {}
@@ -214,13 +409,12 @@ const tabsLayoutMethods = {
     } catch (err) {
       console.warn('[ddc:tabs] Could not apply active tab', err);
     }
-    try { this._renderTabs(); } catch (err) { console.warn('[ddc:tabs] Could not render tabs after switch', err); }
+    try { this._updateActiveTabSelection_(); } catch (err) { console.warn('[ddc:tabs] Could not update tabs after switch', err); }
     // Reapply visibility after tab membership has been resolved so conditional
     // cards on the destination tab are correct on the very first frame.
     try { this._applyVisibility_(); } catch {}
     try {
-      const host = this.cardContainer?.querySelector?.('#ddcBgHost');
-      if (!host || !host.firstChild) this._applyBackgroundFromConfig?.();
+      this._ensureTabBackground_?.();
     } catch {}
 
     try {
@@ -235,6 +429,16 @@ const tabsLayoutMethods = {
     try { this._applyVisibility_(); } catch {}
     try { this._syncEmptyStateUI?.(); } catch {}
     try { this._renderConnectors_?.(); } catch {}
+    this.dispatchEvent?.(new CustomEvent('ddc:active-tab-changed', {
+      detail: {
+        tabId: nextTab,
+        previousTabId,
+        reason: options.reason || 'tab-change',
+        storageKey: this.storageKey,
+      },
+      bubbles: true,
+      composed: true,
+    }));
     return true;
   },
 
@@ -256,7 +460,7 @@ const tabsLayoutMethods = {
     // After switching tabs, reapply sizing based on the current container mode.
     try {
       const __m = this._normalizeContainerSizeMode_(this.containerSizeMode || this.container_size_mode);
-      this._applyAutoScale?.();
+      if (!opts.transitionSeq || __m === 'auto') this._applyAutoScale?.();
     } catch {}
 
     try { this._clearSelection(); } catch {}
@@ -314,18 +518,21 @@ const tabsLayoutMethods = {
 
     wraps.forEach((w) => {
       if (!w) return;
-      // Skip hidden cards
-      const cs = window.getComputedStyle?.(w);
-      const isHidden =
-        (w.style.display === 'none') ||
-        (cs && cs.display === 'none') ||
-        w.classList.contains('ddc-hidden');
-      if (isHidden) return;
-
-      const cardStyle = this._extractPerCardStyle_?.(w) || {};
-      const animatePref = String(cardStyle.animate_cards || '').toLowerCase();
-      const shouldAnimate = animatePref === 'on' || (animatePref !== 'off' && this.animateCards);
+      // Decide from the small persisted override before any layout/style read.
+      const raw = w.dataset?.cardStyle || '';
+      if (!this.__cardAnimationPrefs) this.__cardAnimationPrefs = new WeakMap();
+      let cached = this.__cardAnimationPrefs.get(w);
+      if (!cached || cached.raw !== raw) {
+        let pref = '';
+        try { pref = String(JSON.parse(raw || '{}')?.animate_cards || '').trim().toLowerCase(); } catch {}
+        cached = {raw, pref};
+        this.__cardAnimationPrefs.set(w, cached);
+      }
+      const shouldAnimate = cached.pref === 'on' || (cached.pref !== 'off' && this.animateCards);
       if (!shouldAnimate) return;
+      if (w.style.display === 'none' || w.classList.contains('ddc-hidden')) return;
+      const cs = window.getComputedStyle?.(w);
+      if (cs?.display === 'none') return;
 
       const animationId = this._cardAnimationId_(w);
       if (!replay && animationId && this.__animatedCardIds.has(animationId)) return;
@@ -479,8 +686,7 @@ const tabsLayoutMethods = {
       // Reapply visibility so conditions evaluate in the new tab context.
       try { this._applyVisibility_(); } catch {}
       try {
-        const host = this.cardContainer?.querySelector?.('#ddcBgHost');
-        if (!host || !host.firstChild) this._applyBackgroundFromConfig?.();
+        this._ensureTabBackground_?.();
       } catch {}
       try { this._queueSave('tab-change'); } catch {}
     };
@@ -498,6 +704,7 @@ const tabsLayoutMethods = {
     const bar = this.tabsBar; if (!bar) return;
     const scrollHost = bar.querySelector?.('.ddc-tabs-scroller') || bar;
     const btns = bar.querySelectorAll('.ddc-tab');
+    this._syncTabsOrientation_?.();
     if (btns.length) bar.setAttribute('role', 'tablist');
     else bar.removeAttribute('role');
     btns.forEach((btn, idx) => {
@@ -510,20 +717,24 @@ const tabsLayoutMethods = {
     if (!this.__tabsKeyHandler) {
       this.__tabsKeyHandler = (e) => {
         if (e.target?.closest?.('.ddc-layer-menu')) return;
-        const valid = ['ArrowLeft','ArrowRight','Home','End'];
+        const vertical = this._isSidebarNavigationActive_?.();
+        const valid = vertical ? ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'] : ['ArrowLeft','ArrowRight','Home','End'];
         if (!valid.includes(e.key)) return;
         const list = Array.from(bar.querySelectorAll('.ddc-tab'));
         if (!list.length) return;
         e.preventDefault();
-        const focusedIndex = list.findIndex(b => b === document.activeElement);
+        const focusedIndex = list.findIndex(b => b === (this.shadowRoot?.activeElement || document.activeElement));
         const activeIndex = list.findIndex(b => b.classList.contains('active'));
         let idx = focusedIndex >= 0 ? focusedIndex : (activeIndex >= 0 ? activeIndex : 0);
-        if (e.key === 'ArrowRight') idx = Math.min(list.length - 1, idx + 1);
-        if (e.key === 'ArrowLeft')  idx = Math.max(0, idx - 1);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') idx = Math.min(list.length - 1, idx + 1);
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')  idx = Math.max(0, idx - 1);
         if (e.key === 'Home')       idx = 0;
         if (e.key === 'End')        idx = list.length - 1;
         const target = list[idx];
-        if (target) { try { target.focus({preventScroll:false}); } catch {}; target.click(); }
+        if (target) {
+          target.click();
+          try { bar.querySelector('.ddc-tab.active')?.focus({ preventScroll: false }); } catch {}
+        }
       };
       bar.addEventListener('keydown', this.__tabsKeyHandler);
     }
@@ -538,11 +749,81 @@ const tabsLayoutMethods = {
     this._updateTabOverflowShadows_?.();
   },
 
-  _syncTabsWidth_() {
+  _syncTabsOrientation_() {
+    const bar = this.tabsBar;
+    if (!bar) return;
+    const scroller = bar.querySelector?.('.ddc-tabs-scroller');
+    const layout = scroller && globalThis.getComputedStyle?.(scroller);
+    const vertical = this._isSidebarNavigationActive_?.() && layout?.flexDirection !== 'row';
+    bar.setAttribute?.('aria-orientation', vertical ? 'vertical' : 'horizontal');
+  },
+
+  _stopTabsCanvasCenter_() {
+    this.__tabsCanvasRO?.disconnect();
+    this.__tabsCanvasRO = null;
+    if (this.__tabsCanvasRAF != null) cancelAnimationFrame(this.__tabsCanvasRAF);
+    this.__tabsCanvasRAF = null;
+    if (this.__tabsCanvasHandler) {
+      window.removeEventListener('scroll', this.__tabsCanvasHandler, true);
+      window.removeEventListener('resize', this.__tabsCanvasHandler);
+    }
+    this.__tabsCanvasHandler = null;
+    this.__tabsCanvasTarget = null;
+    this.tabsBar?.classList?.remove('ddc-tabs-canvas-centered');
+  },
+
+  _syncTabsCanvasCenter_() {
+    const bar = this.tabsBar;
+    const canvas = this.cardContainer;
+    if (!this.tabsCenterOnCanvas || !bar || !canvas || this.editMode || this._isSidebarNavigationActive_?.() || this._isExplicitViewportPreview_?.()) {
+      this._stopTabsCanvasCenter_();
+      return;
+    }
+    const update = () => {
+      // In-flow top tabs already follow the canvas. Only fixed bars need viewport coordinates.
+      const fixed = getComputedStyle(bar).position === 'fixed';
+      const rect = canvas.getBoundingClientRect();
+      bar.classList.toggle('ddc-tabs-canvas-centered', fixed && rect.width > 0);
+      if (!fixed || rect.width <= 0) return;
+      // These values belong only to the tabs. Writing them on the host makes
+      // every embedded card inherit new custom properties on each scroll.
+      for (const [name, value] of Object.entries({
+        center: rect.left + rect.width / 2, top: rect.top,
+        bottom: rect.bottom, width: Math.max(0, rect.width - 24),
+      })) {
+        const property = `--ddc-tabs-canvas-${name}`;
+        const next = `${value}px`;
+        if (bar.style.getPropertyValue(property) !== next) bar.style.setProperty(property, next);
+      }
+    };
+    if (this.__tabsCanvasTarget !== canvas) {
+      this._stopTabsCanvasCenter_();
+      this.__tabsCanvasTarget = canvas;
+      const schedule = () => {
+        if (this.__tabsCanvasRAF != null) return;
+        this.__tabsCanvasRAF = requestAnimationFrame(() => {
+          this.__tabsCanvasRAF = null;
+          update();
+        });
+      };
+      this.__tabsCanvasHandler = schedule;
+      if (typeof ResizeObserver !== 'undefined') {
+        this.__tabsCanvasRO = new ResizeObserver(schedule);
+        this.__tabsCanvasRO.observe(canvas);
+      }
+      window.addEventListener('scroll', schedule, {capture: true, passive: true});
+      window.addEventListener('resize', schedule);
+    }
+    update();
+  },
+
+  _syncTabsWidth_({ placementSynced = false } = {}) {
     try {
-      this._syncTabsPlacement_?.();
+      if (!placementSynced) this._syncTabsPlacement_?.();
       this._syncViewportPreviewUI_?.();
+      this._syncTabsCanvasCenter_?.();
       this._syncLeftRailViewportPosition_?.();
+      this._syncTabsOrientation_?.();
       const bar = this.tabsBar;
       if (!bar) return;
       const vw =
@@ -707,20 +988,22 @@ const tabsLayoutMethods = {
         return;
       }
 
-      // The edit context may have placed the tab bar inside the scale wrapper.
-      // Restore it as a root-level sibling before applying the normal viewport
-      // or sidebar placement used outside edit mode.
-      if (bar.parentNode !== root) root.insertBefore(bar, anchor);
-
       if (sidebarActive) {
         const host = this.sidebarHost;
         if (host && host.parentNode !== root) root.insertBefore(host, anchor);
       }
       if (sidebarNavActive) {
+        const navigation = this.sidebarHost?.querySelector?.('.ddc-sidebar-navigation');
+        if (navigation && bar.parentNode !== navigation) navigation.appendChild(bar);
         root.classList.add('ddc-sidebar-layout');
         root.classList.remove('ddc-tabs-bottom-layout');
         return;
       }
+
+      // The edit context may have placed the tab bar inside the scale wrapper.
+      // Restore it as a root-level sibling before applying the normal viewport
+      // or sidebar placement used outside edit mode.
+      if (bar.parentNode !== root) root.insertBefore(bar, anchor);
 
       if (this._isExplicitViewportPreview_?.()) {
         if (anchor.nextSibling !== bar) root.insertBefore(bar, anchor.nextSibling);
@@ -742,6 +1025,7 @@ const tabsLayoutMethods = {
 
   _syncLeftRailViewportPosition_() {
     try {
+      this._syncSidebarViewportPosition_?.();
       if (!this._isSidebarNavigationActive_?.()) {
         this.style?.removeProperty?.('--ddc-left-rail-left');
         return;

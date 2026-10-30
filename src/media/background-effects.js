@@ -366,7 +366,7 @@ const backgroundEffectsMethods = {
     } catch {}
 
     try {
-      [
+      const selector = [
         'ha-panel-lovelace',
         'hui-root',
         '#view',
@@ -376,9 +376,8 @@ const backgroundEffectsMethods = {
         'hui-sections-view',
         'ha-app-layout',
         'partial-panel-resolver'
-      ].forEach((selector) => {
-        (this._deepQueryAll?.(selector) || []).forEach(add);
-      });
+      ].join(',');
+      (this._queryHaChrome_?.(selector) || []).forEach(add);
     } catch {}
 
     try {

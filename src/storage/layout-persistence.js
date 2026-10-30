@@ -5,6 +5,16 @@
  * backend/local fallback behavior consistent.
  */
 
+import { configFingerprint } from './storage-mode.js';
+
+export function normalizeBackendStorageKeys(response) {
+  const values = Array.isArray(response)
+    ? response
+    : (Array.isArray(response?.keys) ? response.keys : null);
+  if (!values) return null;
+  return new Set(values.map((value) => String(value || '').trim()).filter(Boolean));
+}
+
 const DDC_MERGE_MISSING = Symbol('ddc-merge-missing');
 
 function ddcStorageKeyFromCard(card = {}) {
@@ -189,20 +199,20 @@ export function mergeDashboardSnapshots(base, local, remote, updatedAt = new Dat
 }
 
 const persistenceMethods = {
-  _pendingDashboardReplacementKey_() {
-    return `ddc_pending_replace_${this.storageKey || 'default'}`;
+  _pendingDashboardReplacementKey_(key = this.storageKey) {
+    return `ddc_pending_replace_${key || 'default'}`;
   },
 
-  _hasPendingDashboardReplacement_() {
-    try { return localStorage.getItem(this._pendingDashboardReplacementKey_()) === '1'; } catch { return false; }
+  _hasPendingDashboardReplacement_(key = this.storageKey) {
+    try { return localStorage.getItem(this._pendingDashboardReplacementKey_(key)) === '1'; } catch { return false; }
   },
 
-  _markPendingDashboardReplacement_() {
-    try { localStorage.setItem(this._pendingDashboardReplacementKey_(), '1'); } catch {}
+  _markPendingDashboardReplacement_(key = this.storageKey) {
+    try { localStorage.setItem(this._pendingDashboardReplacementKey_(key), '1'); } catch {}
   },
 
-  _clearPendingDashboardReplacement_() {
-    try { localStorage.removeItem(this._pendingDashboardReplacementKey_()); } catch {}
+  _clearPendingDashboardReplacement_(key = this.storageKey) {
+    try { localStorage.removeItem(this._pendingDashboardReplacementKey_(key)); } catch {}
   },
 
   // ---------------- Dashboard URL helpers ----------------
@@ -226,15 +236,86 @@ const persistenceMethods = {
     return !!(this.hass && typeof this.hass.callWS === 'function');
   },
 
+  _captureStorageOperation_(key = this.storageKey) {
+    let dashboardRoute = null;
+    try { dashboardRoute = this._getCurrentDashboardUrlPath_?.() ?? null; } catch {}
+    return {
+      key: String(key || '').trim(),
+      epoch: Number(this.__storageIdentityEpoch || 0) || 0,
+      dashboardRoute,
+    };
+  },
+
+  _isStorageOperationCurrent_(operation = null) {
+    if (!operation) return false;
+    let dashboardRoute = null;
+    try { dashboardRoute = this._getCurrentDashboardUrlPath_?.() ?? null; } catch {}
+    return String(this.storageKey || '').trim() === operation.key
+      && (Number(this.__storageIdentityEpoch || 0) || 0) === operation.epoch
+      && dashboardRoute === operation.dashboardRoute;
+  },
+
+  _lastSyncedDashboardPayloadFor_(key = this.storageKey) {
+    const normalized = String(key || '').trim();
+    return this.__lastSyncedDashboardStorageKey === normalized
+      ? this.__lastSyncedDashboardPayload
+      : null;
+  },
+
+  _recordLastSyncedDashboardPayload_(key, payload = null) {
+    const normalized = String(key || '').trim();
+    this.__lastSyncedDashboardStorageKey = normalized;
+    this.__lastSyncedDashboardPayload = payload
+      ? (this._cloneJson_?.(payload) || cloneDashboardValue(payload))
+      : null;
+  },
+
+  _backendStorageInventoryKnown_() {
+    return this.__backendStorageKeys instanceof Set;
+  },
+
+  _backendStorageHasKey_(key = this.storageKey) {
+    const normalized = String(key || '').trim();
+    return !!normalized
+      && this.__backendStorageKeys instanceof Set
+      && this.__backendStorageKeys.has(normalized);
+  },
+
+  _recordBackendLoadResult_(key, status) {
+    this.__lastBackendLoadResult = {
+      key: String(key || '').trim(),
+      status: String(status || 'unknown'),
+    };
+  },
+
+  _lastBackendLoadStatusFor_(key = this.storageKey) {
+    const normalized = String(key || '').trim();
+    return this.__lastBackendLoadResult?.key === normalized
+      ? this.__lastBackendLoadResult.status
+      : 'unknown';
+  },
+
+  _canInitializeBackendFromLocal_(key = this.storageKey) {
+    const normalized = String(key || '').trim();
+    if (!normalized || !this._backendOK || !this._backendStorageInventoryKnown_()) return false;
+    return !this._backendStorageHasKey_(normalized)
+      && this._lastBackendLoadStatusFor_(normalized) === 'missing';
+  },
+
   // ---------------- Storage-mode persistence (Visual Editor path) ----------------
 
   // Ensure this card has a persistent id in its config (stored in Lovelace)
   async _ensureCardIdSeededInStorage_() {
     if (this.config?.id) return this.config.id;
 
+    const storageOperation = this._captureStorageOperation_();
+
     const id = (crypto?.randomUUID ? crypto.randomUUID() : ("ddc_" + Math.random().toString(36).slice(2)));
-    const url_path = this._getCurrentDashboardUrlPath_();
+    const url_path = storageOperation.dashboardRoute;
     const ll = await this.hass.callWS(url_path ? { type: "lovelace/config", url_path } : { type: "lovelace/config" });
+    if (!this._isStorageOperationCurrent_(storageOperation)) {
+      throw new Error('Dashboard changed while seeding the card id');
+    }
     let currentView = null;
     try { currentView = this._getLovelace?.()?.current_view; } catch {}
     const hit = resolveDdcCardStorageLocation(ll, {
@@ -252,18 +333,22 @@ const persistenceMethods = {
         ? { type: "lovelace/config/save", url_path, config: ll }
         : { type: "lovelace/config/save", config: ll }
     );
+    if (!this._isStorageOperationCurrent_(storageOperation)) return id;
     this.config = { ...(this.config || {}), id };
     this._config = { ...(this._config || {}), id };
     return id;
   },
 
   // Persist this._config back into the stored card (Storage dashboards)
-  async _persistThisCardConfigToStorage_() {
+  async _persistThisCardConfigToStorage_({ captureLive = true, configPatch = {}, checkForExternalChanges = false, beforeSave } = {}) {
     if (!this._hasHassWebSocketApi_()) return false;
-    try {
-      this._persistCurrentResponsiveProfileToMemory_?.({ syncMembership: true });
-      this._syncLiveCardConfigsIntoResponsiveLayouts_?.();
-    } catch {}
+    const storageOperation = this._captureStorageOperation_();
+    if (captureLive) {
+      try {
+        this._persistCurrentResponsiveProfileToMemory_?.({ syncMembership: true });
+        this._syncLiveCardConfigsIntoResponsiveLayouts_?.();
+      } catch {}
+    }
     const desktopCards = this._responsiveLayouts?.[this._getPrimaryResponsiveLayoutKey_?.()] || this._captureCurrentLayoutEntries_?.() || [];
     const responsiveLayouts = this._serializeResponsiveLayouts_
       ? this._cloneJson_(this._serializeResponsiveLayouts_(this._responsiveLayouts, desktopCards))
@@ -282,15 +367,19 @@ const persistenceMethods = {
     const partial = {
       type: "custom:dynamic-drag-drop-dashboard",
       ...this._config,
+      ...configPatch,
       id,
       cards: this._cloneJson_(desktopCards),
     };
     if (responsiveLayouts) partial.responsive_layouts = responsiveLayouts;
 
-    const url_path = this._getCurrentDashboardUrlPath_();
+    const url_path = storageOperation.dashboardRoute;
 
     // LOAD
     const ll = await this.hass.callWS(url_path ? { type: "lovelace/config", url_path } : { type: "lovelace/config" });
+    if (!this._isStorageOperationCurrent_(storageOperation)) {
+      throw new Error('Dashboard changed while persisting card configuration');
+    }
 
     // FIND our card by type + id (supports nesting)
     let currentView = null;
@@ -305,20 +394,36 @@ const persistenceMethods = {
 
     // MERGE + WRITE
     const currentCard = this._getValueAtStoragePath_(ll, hit.path);
+    if ((checkForExternalChanges || this._getStorageMode_?.() === 'lovelace')
+        && this.__lastSetConfigSource
+        && configFingerprint(currentCard) !== configFingerprint(this.__lastSetConfigSource)) {
+      throw new Error('This dashboard was changed elsewhere. Reload before saving to avoid replacing those changes.');
+    }
     const merged = { ...currentCard, ...partial };
     this._setValueAtStoragePath_(ll, hit.path, merged);
+    if (beforeSave) {
+      await beforeSave();
+      if (!this._isStorageOperationCurrent_(storageOperation)) throw new Error('Dashboard changed while preparing the storage switch.');
+    }
 
     // SAVE (respect url_path)
-    await this.hass.callWS(
+    this.__pendingLovelaceSaveFingerprint = configFingerprint(merged);
+    this.__pendingLovelaceSaveRoute = storageOperation.dashboardRoute;
+    try { await this.hass.callWS(
       url_path
         ? { type: "lovelace/config/save", url_path, config: ll }
         : { type: "lovelace/config/save", config: ll }
-    );
+    ); } finally { this.__pendingLovelaceSaveFingerprint = null; }
+    if (!this._isStorageOperationCurrent_(storageOperation)) return true;
 
     // Apply locally
-    this.config = merged;
-    this._config = { ...(this._config || {}), id };
+    this.config = this._cloneJson_?.(merged) || merged;
+    this._config = this._cloneJson_?.(merged) || merged;
     this.__lastSetConfigSource = this._cloneJson_?.(merged) || merged;
+    if (merged.storage_mode === 'lovelace' || configPatch.storage_mode) {
+      this.__lastLovelaceSavedFingerprint = configFingerprint(merged);
+      this.__lastLovelaceSavedRoute = storageOperation.dashboardRoute;
+    }
     this.requestUpdate?.();
     return true;
   },
@@ -524,6 +629,23 @@ const persistenceMethods = {
     this._saveTimer = setTimeout(() => this._saveLayout(true), this.autoSaveDebounce);
   },
 
+  async _persistDashboardSettings_() {
+    // Persist the authoritative snapshot before a Lovelace save can recreate
+    // the card and reload its backend options. Never race two Lovelace writes.
+    const options = this._cloneJson_(this._exportableOptions());
+    if (await this._saveLayout(true) === false) {
+      throw new Error('Settings could not be saved. Check the storage connection and try again.');
+    }
+    if (this._getStorageMode_?.() === 'lovelace') return;
+    try {
+      const saved = await this._persistThisCardConfigToStorage_?.({ configPatch: options });
+      if (!saved) await this._persistOptionsToYaml?.(options, { noDownload: true });
+    } catch (error) {
+      // YAML dashboards can be read-only. The backend snapshot is already saved.
+      this._dbgPush?.('save', 'Settings saved to backend; Lovelace mirror unavailable', { error: String(error) });
+    }
+  },
+
   async _saveLayoutNow_() {
     return this._saveLayout(false);
   },
@@ -548,10 +670,15 @@ const persistenceMethods = {
     // A full Lovelace conversion intentionally replaces the current dashboard.
     // Merging the previous backend snapshot here can resurrect old tabs/cards
     // and destroy the imported card-to-tab membership.
-    return !this.__dashboardConverterImporting && !this.__replaceDashboardSnapshot;
+    return !this.__dashboardConverterImporting
+      && !this.__ddcImportingDashboard
+      && !this.__replaceDashboardSnapshot;
   },
 
   async _saveLayoutInner_(silent = true) {
+    const storageOperation = this._captureStorageOperation_();
+    const saveStorageKey = storageOperation.key;
+    const isCurrentSave = () => this._isStorageOperationCurrent_(storageOperation);
     this._persistCurrentResponsiveProfileToMemory_();
     try { this._syncLiveCardConfigsIntoResponsiveLayouts_?.(); } catch {}
     this._recordLayoutHistoryCheckpoint_?.('save');
@@ -565,13 +692,38 @@ const persistenceMethods = {
        responsive_layouts: this._cloneJson_(this._serializeResponsiveLayouts_(this._responsiveLayouts, desktopCards)),
        packages: this._exportDashboardPackages_(),
      };
+    if (payload.options && saveStorageKey) payload.options.storage_key = saveStorageKey;
 
-    if (this.storageKey && this._backendOK && this._shouldMergeRemoteDashboardSnapshot_()) {
+    if (this._getStorageMode_?.() === 'lovelace') {
       try {
-        const remote = await this._loadLayoutFromBackend(this.storageKey);
-        if (remote && typeof remote === 'object') {
+        if (this._getLovelace?.()?.mode === 'yaml') throw new Error('Lovelace mode requires a UI-managed dashboard to save edits.');
+        const saved = await this._persistThisCardConfigToStorage_({
+          captureLive: false,
+          configPatch: { ...payload.options, storage_mode: 'lovelace', packages: payload.packages },
+          checkForExternalChanges: true,
+        });
+        if (!saved) throw new Error('Home Assistant is not ready to save this dashboard.');
+        if (!isCurrentSave()) return false;
+        this.__dirty = false;
+        this._updateApplyBtn?.();
+        if (!silent) this._toast?.('Saved to Lovelace.');
+        return true;
+      } catch (error) {
+        this.__dirty = true;
+        this._updateApplyBtn?.();
+        this._toast?.(`Lovelace save failed: ${error.message || error}`);
+        return false;
+      }
+    }
+
+    let blockBackendWrite = false;
+    if (saveStorageKey && this._backendOK && this._shouldMergeRemoteDashboardSnapshot_()) {
+      try {
+        const remote = await this._loadLayoutFromBackend(saveStorageKey);
+        if (!isCurrentSave()) return false;
+        if (remote && typeof remote === 'object' && this._lastBackendLoadStatusFor_(saveStorageKey) === 'found') {
           payload = this._mergeDashboardPayloadForSync_(
-            this.__lastSyncedDashboardPayload || remote,
+            this._lastSyncedDashboardPayloadFor_(saveStorageKey) || remote,
             payload,
             remote,
             savedAt
@@ -585,8 +737,12 @@ const persistenceMethods = {
           payload.responsive_layouts = this._cloneJson_(
             this._serializeResponsiveLayouts_(this._responsiveLayouts, desktopCards)
           );
+        } else if (!this._canInitializeBackendFromLocal_(saveStorageKey)) {
+          blockBackendWrite = true;
+          this._dbgPush?.('save', 'Blocked write because the backend baseline could not be loaded');
         }
       } catch (mergeError) {
+        blockBackendWrite = true;
         this._dbgPush?.('save', 'Remote merge skipped', { error: String(mergeError) });
       }
     }
@@ -600,18 +756,28 @@ const persistenceMethods = {
       this._deleteParkedSidebarOptions_(this._config);
     } catch {}
 
-    try { this._writeRuntimeLayoutCache_?.(payload); } catch {}
-    try { localStorage.setItem(`ddc_local_${this.storageKey || 'default'}`, JSON.stringify(payload)); } catch {}
+    if (!isCurrentSave()) return false;
+    try { this._writeRuntimeLayoutCache_?.(payload, saveStorageKey); } catch {}
+    try { localStorage.setItem(`ddc_local_${saveStorageKey || 'default'}`, JSON.stringify(payload)); } catch {}
 
-    if (!this.storageKey) { if (!silent) this._toast('Saved locally (no storage_key set).');
-      this.__lastSyncedDashboardPayload = this._cloneJson_(payload);
+    if (blockBackendWrite) {
+      this.__dirty = true;
+      this._updateApplyBtn?.();
+      this._scheduleBackendSnapshotRetry_?.('backend-baseline-retry');
+      if (!silent) this._toast?.('The shared dashboard could not be verified. Changes were kept locally and were not uploaded.');
+      return false;
+    }
+
+    if (!saveStorageKey) { if (!silent) this._toast('Saved locally (no storage_key set).');
+      this._recordLastSyncedDashboardPayload_(saveStorageKey, payload);
       this.__dirty = false; this._updateApplyBtn();
-      return; }
+      return true; }
 
     try {
-      await this._saveLayoutToBackend(this.storageKey, payload);
-      this._clearPendingDashboardReplacement_?.();
-      this.__lastSyncedDashboardPayload = this._cloneJson_(payload);
+      await this._saveLayoutToBackend(saveStorageKey, payload);
+      if (!isCurrentSave()) return false;
+      this._clearPendingDashboardReplacement_?.(saveStorageKey);
+      this._recordLastSyncedDashboardPayload_(saveStorageKey, payload);
       if (!silent) {
         try { await this._persistThisCardConfigToStorage_?.(); } catch (persistErr) {
           console.warn('[drag-and-drop-card] Could not persist layout to Lovelace storage', persistErr);
@@ -619,10 +785,14 @@ const persistenceMethods = {
       }
       if (!silent) this._toast('Layout saved.');
       this.__dirty = false; this._updateApplyBtn();
+      return true;
     } catch (e) {
       console.error('Backend save failed', e);
       this._dbgPush('save', 'Backend save failed', { error: String(e) });
       if (!silent) this._toast('Backend save failed — kept local copy.');
+      this.__dirty = true;
+      this._updateApplyBtn?.();
+      return false;
     }
   },
 
@@ -659,10 +829,12 @@ const persistenceMethods = {
       const ms = Math.round(performance.now() - t0);
       this._dbgPush('probe', `OK (${ms} ms)`, r);
       this._backendOK = !!r;
+      this.__backendStorageKeys = normalizeBackendStorageKeys(r);
     } catch (e) {
       const ms = Math.round(performance.now() - t0);
       this._dbgPush('probe', `FAILED (${ms} ms)`, { error: String(e) });
       this._backendOK = false;
+      this.__backendStorageKeys = null;
     }
     this._updateStoreBadge();
     return this._backendOK;
@@ -679,16 +851,29 @@ const persistenceMethods = {
       this._dbgPush('load', `GET /api/${url}`);
       const data = this._normalizeDashboardPayload_(await this.hass.callApi('get', url));
       const ms = Math.round(performance.now() - t0);
+      const inventoryHasKey = this._backendStorageHasKey_(key);
+      const hasStoredPayload = !!data
+        && typeof data === 'object'
+        && (inventoryHasKey || Object.keys(data).length > 0);
+      this._recordBackendLoadResult_(key, hasStoredPayload ? 'found' : 'missing');
+      if (hasStoredPayload) this.__backendSnapshotRetryAttempts = 0;
+      if (hasStoredPayload && this.__backendStorageKeys instanceof Set) {
+        this.__backendStorageKeys.add(String(key || '').trim());
+      }
       this._dbgPush('load', `OK (${ms} ms)`, { bytes: JSON.stringify(data||'').length });
-      return data;
+      return hasStoredPayload ? data : null;
     } catch (e) {
       const ms = Math.round(performance.now() - t0);
+      this._recordBackendLoadResult_(key, 'error');
       this._dbgPush('load', `FAILED (${ms} ms)`, { error: String(e) });
       return null;
     }
   },
 
-  async _saveLayoutToBackend(key, data) {
+  async _saveLayoutToBackend(key, data, { allowModeSwitch = false } = {}) {
+    if (!allowModeSwitch && this._getStorageMode_?.() === 'lovelace') {
+      throw new Error('This dashboard uses Lovelace storage; backend writes are disabled.');
+    }
     if (!this._hasHassApi_()) {
       throw new Error('Home Assistant API is not ready');
     }
@@ -705,6 +890,11 @@ const persistenceMethods = {
       this._dbgPush('save', `POST /api/${url}`, { bytes: size });
       const res = await this.hass.callApi('post', url, data);
       const ms = Math.round(performance.now() - t0);
+      if (this.__backendStorageKeys instanceof Set) {
+        this.__backendStorageKeys.add(String(key || '').trim());
+      }
+      this._recordBackendLoadResult_(key, 'found');
+      this.__backendSnapshotRetryAttempts = 0;
       this._dbgPush('save', `OK (${ms} ms)`, res);
       if (hasPackagePayload && !('package_sync' in (res || {}))) {
         this._dbgPush('packages', 'Package sync unsupported by backend', res);
@@ -727,22 +917,35 @@ const persistenceMethods = {
   },
 
   async _saveOptionsToBackend(key, newOptions) {
+    if (this._getStorageMode_?.() === 'lovelace') {
+      return this._persistThisCardConfigToStorage_({ configPatch: newOptions, checkForExternalChanges: true });
+    }
     if (!this._hasHassApi_()) return false;
+    const storageOperation = this._captureStorageOperation_(key);
+    const saveStorageKey = storageOperation.key;
+    const isCurrentSave = () => this._isStorageOperationCurrent_(storageOperation);
     try {
-      const cur = await this._loadLayoutFromBackend(key);
+      const cur = await this._loadLayoutFromBackend(saveStorageKey);
+      if (!isCurrentSave()) return false;
+      if (!cur && !this._canInitializeBackendFromLocal_(saveStorageKey)) {
+        this._dbgPush?.('save', 'Blocked settings write because the backend baseline could not be loaded');
+        this._scheduleBackendSnapshotRetry_?.('backend-settings-baseline-retry');
+        return false;
+      }
       let local = null;
-      try { local = this._normalizeDashboardPayload_(JSON.parse(localStorage.getItem(`ddc_local_${key || 'default'}`) || 'null')); } catch {}
+      try { local = this._normalizeDashboardPayload_(JSON.parse(localStorage.getItem(`ddc_local_${saveStorageKey || 'default'}`) || 'null')); } catch {}
       try {
         this._persistCurrentResponsiveProfileToMemory_?.({ syncMembership: true });
         this._syncLiveCardConfigsIntoResponsiveLayouts_?.();
       } catch {}
-      const base = this.__lastSyncedDashboardPayload
+      const base = this._lastSyncedDashboardPayloadFor_(saveStorageKey)
         || ((cur && typeof cur === 'object') ? cur : ((local && typeof local === 'object') ? local : {}));
       const liveCards = this._responsiveLayouts?.[this._getPrimaryResponsiveLayoutKey_?.()] || this._captureCurrentLayoutEntries_?.() || [];
       const liveResponsiveLayouts = this._serializeResponsiveLayouts_
         ? this._cloneJson_(this._serializeResponsiveLayouts_(this._responsiveLayouts, liveCards))
         : null;
       const normalizedOptions = this._normalizeDashboardOptions_(newOptions || this._exportableOptions?.() || {}, { requireSizeMode: true, forceAutoResize: true });
+      if (saveStorageKey) normalizedOptions.storage_key = saveStorageKey;
       const localCandidate = {
         version: 3,
         ...this._normalizeDashboardPayload_(base || {}),
@@ -759,10 +962,12 @@ const persistenceMethods = {
         (cur && typeof cur === 'object') ? cur : base,
         localCandidate.updated_at
       );
-      try { localStorage.setItem(`ddc_local_${key || 'default'}`, JSON.stringify(merged)); } catch {}
-      await this._saveLayoutToBackend(key, merged);
-      this._clearPendingDashboardReplacement_?.();
-      this.__lastSyncedDashboardPayload = this._cloneJson_(merged);
+      if (!isCurrentSave()) return false;
+      try { localStorage.setItem(`ddc_local_${saveStorageKey || 'default'}`, JSON.stringify(merged)); } catch {}
+      await this._saveLayoutToBackend(saveStorageKey, merged);
+      if (!isCurrentSave()) return false;
+      this._clearPendingDashboardReplacement_?.(saveStorageKey);
+      this._recordLastSyncedDashboardPayload_(saveStorageKey, merged);
       return true;
     } catch (e) {
       console.warn('[ddc] saveOptionsToBackend failed', e);
@@ -772,6 +977,14 @@ const persistenceMethods = {
 
   _updateStoreBadge() {
     const el = this.storeBadge; if (!el) return;
+    if (this._getStorageMode_?.() === 'lovelace') {
+      el.textContent = 'Lovelace';
+      el.title = 'Layouts are read from and saved to the Home Assistant dashboard configuration.';
+      el.classList.remove('warn');
+      el.style.background = 'rgba(76,175,80,.15)';
+      el.style.borderColor = 'rgba(76,175,80,.45)';
+      return;
+    }
     const usingHost = this._backendOK && !!this.storageKey;
     el.textContent = usingHost ? 'System OK' : 'Local storage';
     el.title = usingHost

@@ -29,6 +29,7 @@ const layoutHistoryMethods = {
         responsive_layouts: snapshot.responsive_layouts || null,
         connectors: snapshot.connectors || [],
         responsive_connectors: snapshot.responsive_connectors || null,
+        sidebar_cards: snapshot.sidebar_cards || [],
       });
     } catch {
       return '';
@@ -66,6 +67,7 @@ const layoutHistoryMethods = {
       responsive_layouts: responsiveLayouts,
       connectors: activeConnectors || [],
       responsive_connectors: responsiveConnectors,
+      sidebar_cards: this._cloneJson_(this._captureSidebarLayoutEntries_?.() || this.sidebarCards || []),
     };
     snapshot.signature = this._historySnapshotSignature_(snapshot);
     return snapshot;
@@ -96,7 +98,8 @@ const layoutHistoryMethods = {
   _resetLayoutHistory_(reason = 'reset') {
     this.__undoStack = [];
     this.__redoStack = [];
-    this.__historyCurrentSnapshot = this._captureLayoutHistorySnapshot_(reason);
+    this.__historyCurrentSnapshot = reason === 'load' && !this.editMode
+      ? null : this._captureLayoutHistorySnapshot_(reason);
     this._syncHistoryButtons_?.();
   },
 
@@ -147,7 +150,7 @@ const layoutHistoryMethods = {
     try {
       const primaryKey = this._getPrimaryResponsiveLayoutKey_?.() || 'desktop_landscape';
       this._responsiveLayouts = this._normalizeResponsiveLayouts_(snapshot.cards || [], snapshot.responsive_layouts || null);
-      this.sidebarCards = [];
+      this.sidebarCards = this._normalizeSidebarCards_?.(snapshot.sidebar_cards || []) || [];
       this._responsiveConnectors = this._normalizeResponsiveConnectorLayouts_(snapshot.connectors || [], snapshot.responsive_connectors || null);
       this._syncConnectorLayoutsToConfig_?.();
 
@@ -168,6 +171,7 @@ const layoutHistoryMethods = {
           ...(this._config || {}),
           cards: this._cloneJson_(primaryCards),
           responsive_layouts: this._cloneJson_(this._serializeResponsiveLayouts_(this._responsiveLayouts, primaryCards)),
+          sidebar_cards: this._cloneJson_(this.sidebarCards),
         };
       } catch {}
 

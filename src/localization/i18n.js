@@ -304,6 +304,69 @@ const FR = Object.freeze({
   'Saved': 'Enregistré', 'Unsaved changes': 'Modifications non enregistrées',
   'Previous screen saver design': 'Économiseur précédent', 'Next screen saver design': 'Économiseur suivant',
   'Previous background': 'Fond précédent', 'Next background': 'Fond suivant',
+  // Upstream v2.0.9–v2.2.3: canvas, editing permissions, sidebar, tabs, storage, connectors.
+  'Sidebar': 'Barre latérale', 'Advanced': 'Avancé',
+  'Canvas corner radius (px)': 'Rayon des coins du canevas (px)',
+  'Set 0 for square corners. Applies to the main canvas, not individual cards.':
+    'Indiquez 0 pour des coins carrés. S’applique au canevas principal, pas aux cartes.',
+  'Show canvas border': 'Afficher la bordure du canevas',
+  'For a seamless join with the sidebar, turn this off and set canvas corner radius and sidebar gap to 0.':
+    'Pour une jonction sans couture avec la barre latérale, désactivez cette option et réglez le rayon du canevas et l’écart de la barre latérale sur 0.',
+  'Editing permissions': 'Droits de modification', 'All users': 'Tous les utilisateurs',
+  'Administrators only': 'Administrateurs uniquement', 'Selected users': 'Utilisateurs sélectionnés',
+  'Choose who can edit this DDC dashboard. Administrators always retain access; everyone can still use cards and tabs.':
+    'Choisissez qui peut modifier ce tableau de bord. Les administrateurs gardent toujours l’accès ; tout le monde peut utiliser les cartes et les onglets.',
+  'Dashboard editors': 'Éditeurs du tableau de bord',
+  'Select users who can edit. Click a selected name again to remove access.':
+    'Sélectionnez les utilisateurs autorisés à modifier. Cliquez de nouveau sur un nom pour retirer l’accès.',
+  'Try again': 'Réessayer',
+  'Controls DDC editing only. Home Assistant permissions are unchanged.':
+    'Concerne uniquement la modification de ce tableau. Les droits Home Assistant ne changent pas.',
+  'Configure left sidebar': 'Configurer la barre latérale gauche',
+  'Center tab bar on canvas': 'Centrer la barre d’onglets sur le canevas',
+  'Automatic tab return': 'Retour automatique à un onglet', 'Return to': 'Revenir à',
+  'After no activity for': 'Après une inactivité de',
+  'Dashboard structure': 'Structure du tableau de bord',
+  'Choose a simple button rail or a sidebar with labels and your everyday controls.':
+    'Choisissez un simple rail de boutons ou une barre latérale avec libellés et commandes du quotidien.',
+  'Show on this dashboard': 'Afficher sur ce tableau de bord', 'Mode': 'Mode',
+  'Buttons only': 'Boutons uniquement',
+  'Your tabs, arranged vertically. Icons with names on hover.':
+    'Vos onglets, disposés verticalement. Icônes avec nom au survol.',
+  'Expanded': 'Étendue',
+  'Icons and names, and optional clock, calendar or weather.':
+    'Icônes et noms, avec horloge, calendrier ou météo en option.',
+  'Uses the same tabs as your dashboard. On narrow screens, navigation becomes a horizontal row.':
+    'Utilise les mêmes onglets que le tableau de bord. Sur écran étroit, la navigation passe en ligne horizontale.',
+  'Manage tabs and icons': 'Gérer les onglets et les icônes', 'Navigation title': 'Titre de la navigation',
+  'Information widgets': 'Widgets d’information', 'Clock': 'Horloge', 'Calendar': 'Calendrier',
+  'Widget style': 'Style des widgets',
+  'Soft — quiet surfaces': 'Doux — surfaces discrètes',
+  'Minimal — clean typography': 'Minimal — typographie épurée',
+  'Accent — tinted with your color': 'Accent — teinté de votre couleur',
+  'Calendars': 'Calendriers', 'Content placement': 'Position du contenu',
+  'Center of viewport': 'Centre de l’écran', 'Bottom of viewport': 'Bas de l’écran',
+  'Layers has its own button with an active count. Open it to toggle visibility groups without leaving your current tab.':
+    'Les calques ont leur propre bouton avec le nombre actif. Ouvrez-le pour afficher ou masquer des groupes sans quitter l’onglet.',
+  'Appearance preview': 'Aperçu de l’apparence',
+  'Choose where this dashboard reads and saves its layout. Most dashboards should keep the default.':
+    'Choisissez où ce tableau lit et enregistre sa disposition. La plupart des tableaux doivent garder la valeur par défaut.',
+  'Layout storage': 'Stockage de la disposition',
+  'DDC backend (default)': 'Stockage de l’intégration (par défaut)',
+  'Lovelace — external tools and dashboard config': 'Lovelace — outils externes et configuration du tableau',
+  'Before changing storage': 'Avant de changer de stockage',
+  'Bend point': 'Point de courbure', 'Remove bend': 'Supprimer la courbure',
+  'Start simple, then add only the bends you need.': 'Commencez simplement, puis ajoutez seulement les courbures nécessaires.',
+  'Simplify line': 'Simplifier la ligne',
+  'Customize appearance': 'Personnaliser l’apparence', 'Reset appearance': 'Réinitialiser l’apparence',
+  'No upcoming events': 'Aucun événement à venir',
+  'Choose a weather entity in Sidebar settings.': 'Choisissez une entité météo dans les réglages de la barre latérale.',
+  'Tab appearance': 'Apparence des onglets', 'Active tab shadow': 'Ombre de l’onglet actif',
+  'Reset tab appearance': 'Réinitialiser l’apparence des onglets', 'Tab bar size (%)': 'Taille de la barre d’onglets (%)',
+  'Automatic (weather.home)': 'Automatique (weather.home)',
+  'Automatic, or calendar.home, calendar.work': 'Automatique, ou calendar.home, calendar.work',
+  'Theme default': 'Thème par défaut', 'Default': 'Par défaut',
+  'Theme default (e.g. #167d86)': 'Thème par défaut (ex. #167d86)',
 });
 
 const ATTRIBUTES = ['aria-label', 'title', 'data-tooltip', 'placeholder', 'label'];

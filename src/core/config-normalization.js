@@ -1,3 +1,5 @@
+import { normalizeSidebarAppearance } from '../layout/sidebar-appearance.js';
+import { normalizeTabStyle } from '../layout/tab-style.js';
 /*
  * Configuration normalization, cloning, storage-key, and sanitization helpers.
  *
@@ -23,9 +25,10 @@ const configStaticMethods = {
 };
 
 export function normalizeTabsSize(value) {
+  if (value == null || String(value).trim() === '') return 100;
   const size = Number(value);
   if (!Number.isFinite(size)) return 100;
-  return Math.max(80, Math.min(140, Math.round(size)));
+  return Math.max(1, Math.min(1000, Math.round(size)));
 }
 
 export function normalizeCardOverflow(value) {
@@ -144,19 +147,9 @@ const configHelperMethods = {
   },
 
   _parkedSidebarOptionKeys_() {
-    return [
-      'sidebar_enabled', 'sidebar_items', 'sidebar_content', 'sidebar_style',
-      'sidebar_density', 'sidebar_accent', 'sidebar_header', 'sidebar_header_type',
-      'sidebar_canvas_height', 'sidebar_cards', 'sidebar_home_image',
-      'sidebar_house_image', 'sidebar_home_image_url', 'sidebar_calendar_entities',
-      'sidebar_calendars', 'sidebar_weather_entity', 'sidebar_title',
-      'sidebar_user_name', 'sidebar_user_role',
-      'sidebarEnabled', 'sidebarItems', 'sidebarContent', 'sidebarStyle',
-      'sidebarDensity', 'sidebarAccent', 'sidebarHeader', 'sidebarHeaderType',
-      'sidebarCanvasHeight', 'sidebarCards', 'sidebarHomeImage',
-      'sidebarHouseImage', 'sidebarCalendarEntities', 'sidebarCalendars',
-      'sidebarWeatherEntity', 'sidebarTitle', 'sidebarUserName', 'sidebarUserRole',
-    ];
+    // Kept as a compatibility hook for snapshots produced while Sidebar was
+    // temporarily disabled. Sidebar options are first-class dashboard data now.
+    return [];
   },
 
   _deleteParkedSidebarOptions_(target = null) {
@@ -197,6 +190,17 @@ const configHelperMethods = {
     if ('tabsSize' in next && !('tabs_size' in next)) {
       next.tabs_size = next.tabsSize;
     }
+    if ('tabsAutoReturnEnabled' in next && !('tabs_auto_return_enabled' in next)) {
+      next.tabs_auto_return_enabled = next.tabsAutoReturnEnabled;
+    }
+    if ('tabsAutoReturnTab' in next && !('tabs_auto_return_tab' in next)) {
+      next.tabs_auto_return_tab = next.tabsAutoReturnTab;
+    }
+    if ('tabsAutoReturnDelay' in next && !('tabs_auto_return_delay' in next)) {
+      next.tabs_auto_return_delay = next.tabsAutoReturnDelay;
+    }
+    if ('sidebar_appearance' in next) next.sidebar_appearance = normalizeSidebarAppearance(next.sidebar_appearance);
+    if ('tabs_style' in next) next.tabs_style = normalizeTabStyle(next.tabs_style);
     if ('tabs_size' in next) {
       next.tabs_size = this._normalizeTabsSize_(next.tabs_size);
     }
@@ -215,6 +219,9 @@ const configHelperMethods = {
     delete next.autoViewportMaxWidth;
     delete next.autoScaleMax;
     delete next.tabsSize;
+    delete next.tabsAutoReturnEnabled;
+    delete next.tabsAutoReturnTab;
+    delete next.tabsAutoReturnDelay;
     delete next.cardOverflow;
     delete next.defaultCardOverflow;
     delete next.default_card_overflow;

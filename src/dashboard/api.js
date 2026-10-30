@@ -1,3 +1,7 @@
+import { normalizeEditPermissions } from '../core/edit-permissions.js';
+import { normalizeContainerRadius } from '../layout/container-style.js';
+import { normalizeSidebarAppearance } from '../layout/sidebar-appearance.js';
+import { normalizeTabStyle, normalizeTabIconColor } from '../layout/tab-style.js';
 /*
  * Local dashboard API surface exposed to internal HTML cards and other embedded tools.
  *
@@ -25,6 +29,7 @@ const dashboardApiMethods = {
     const opt = {
       // Core
       storage_key: this.storageKey || undefined,
+      storage_mode: this._getStorageMode_?.() || 'backend',
       grid: this.gridSize,
       connector_grid_size: this.connectorGridSize || undefined,
       drag_live_snap: !!this.dragLiveSnap,
@@ -32,6 +37,7 @@ const dashboardApiMethods = {
       auto_save_debounce: this.autoSaveDebounce,
       disable_overlap: !!this.disableOverlap,
       debug: !!this.debug,
+      edit_permissions: normalizeEditPermissions(this.editPermissions),
       edit_mode_pin: (this.editModePin || undefined),
 
       // Size & layout
@@ -55,6 +61,8 @@ const dashboardApiMethods = {
 
       // Appearance
       container_background: this.containerBackground,
+      container_radius: normalizeContainerRadius(this.containerRadius),
+      container_border: this.containerBorder !== false,
       apply_background_to_page: !!this.applyBackgroundToPage,
       card_background: this.cardBackground,
       card_overflow: this._normalizeCardOverflow_(this.cardOverflow),
@@ -72,9 +80,21 @@ const dashboardApiMethods = {
       // Tabs (from the modal section)
       tabs: this.tabs,
       tabs_position: this._normalizeTabsPosition_(this.tabsPosition),
+      tabs_style: normalizeTabStyle(this.tabsStyle),
       tabs_size: this._normalizeTabsSize_(this.tabsSize),
+      tabs_center_on_canvas: !!this.tabsCenterOnCanvas,
       default_tab: this.defaultTab,
       hide_tabs_when_single: !!this.hideTabsWhenSingle,
+      tabs_auto_return_enabled: !!this.tabsAutoReturnEnabled,
+      tabs_auto_return_tab: this._resolveTabsAutoReturnTarget_?.(this.tabsAutoReturnTab) || this.tabsAutoReturnTab || this.defaultTab,
+      tabs_auto_return_delay: this._normalizeTabsAutoReturnDelay_?.(this.tabsAutoReturnDelay) || this.tabsAutoReturnDelay,
+      sidebar_enabled: !!this.sidebarEnabled,
+      sidebar_type: this._normalizeSidebarType_(this.sidebarType),
+      sidebar_items: ['navigation'],
+      sidebar_appearance: normalizeSidebarAppearance(this.sidebarAppearance),
+      sidebar_header: this._normalizeSidebarHeader_(this.sidebarHeader),
+      sidebar_canvas_height: this._normalizeSidebarCanvasHeight_(this.sidebarCanvasHeight),
+      sidebar_cards: this._cloneJson_(this._normalizeSidebarCards_(this.sidebarCards || cfg.sidebar_cards || [])),
       layers_enabled: !!this.layersEnabled,
       layers_button_details: !!this.layersButtonDetails,
       layers: this._cloneJson_(this.layers || []),
@@ -113,6 +133,10 @@ const dashboardApiMethods = {
 
   _applyImportedOptions(opts = {}, recalc = true) {
     opts = this._normalizeDashboardOptions_(opts, { forceAutoResize: true });
+    // Storage authority belongs to the outer Lovelace card. An imported
+    // snapshot or old backend options must not silently change that authority.
+    opts = { ...opts };
+    delete opts.storage_mode;
     if (opts && Object.prototype.hasOwnProperty.call(opts, 'storage_key')) {
     // If storage_key changed, push it into HA editor immediately
      if (this._isInHaEditorPreview()) {
@@ -141,6 +165,7 @@ const dashboardApiMethods = {
     if ('auto_save' in opts)          this.autoSave = !!opts.auto_save;
     if ('auto_save_debounce' in opts) this.autoSaveDebounce = Number(opts.auto_save_debounce) || 800;
     if ('auto_save' in opts || 'auto_save_debounce' in opts) this._syncToolbarAutoSaveState_?.();
+    if ('edit_permissions' in opts) this.editPermissions = normalizeEditPermissions(opts.edit_permissions);
     if ('edit_mode_pin' in opts || 'editModePin' in opts) this.editModePin = String(opts.edit_mode_pin ?? opts.editModePin ?? '');
     if ('do_not_resize_text' in opts) this.doNotResizeText = !!opts.do_not_resize_text;
     if ('optimize_for_mobile' in opts) this.optimizeForMobile = !!opts.optimize_for_mobile;
@@ -178,6 +203,8 @@ const dashboardApiMethods = {
       this._connectorDraft = null;
       this._selectedConnectorId = null;
     }
+    if ('container_radius' in opts) this.containerRadius = normalizeContainerRadius(opts.container_radius);
+    if ('container_border' in opts) this.containerBorder = opts.container_border !== false;
     if ('container_background' in opts) this.containerBackground = opts.container_background ?? 'transparent';
     if ('apply_background_to_page' in opts) this.applyBackgroundToPage = !!opts.apply_background_to_page;
     if ('card_background' in opts)      this.cardBackground = opts.card_background ?? 'var(--ha-card-background, var(--card-background-color))';
@@ -292,6 +319,7 @@ const dashboardApiMethods = {
         id: String(tab?.id || tab?.label || `tab_${index + 1}`).trim() || `tab_${index + 1}`,
         label: String(tab?.label || tab?.id || `Tab ${index + 1}`).trim(),
         icon: tab?.icon || '',
+        ...(normalizeTabIconColor(tab?.icon_color) ? { icon_color: normalizeTabIconColor(tab.icon_color) } : {}),
         label_mode: tab?.label_mode || tab?.labelMode || 'both',
       })) : [];
     }
@@ -301,14 +329,27 @@ const dashboardApiMethods = {
     if ('hide_tabs_when_single' in opts) {
       this.hideTabsWhenSingle = opts.hide_tabs_when_single !== false;
     }
+    if ('tabs_auto_return_enabled' in opts) {
+      this.tabsAutoReturnEnabled = !!opts.tabs_auto_return_enabled;
+    }
+    if ('tabs_auto_return_delay' in opts) {
+      this.tabsAutoReturnDelay = this._normalizeTabsAutoReturnDelay_(opts.tabs_auto_return_delay);
+    }
+    if ('tabs_auto_return_tab' in opts) {
+      this.tabsAutoReturnTab = String(opts.tabs_auto_return_tab || '').trim();
+    }
     if ('sidebar_enabled' in opts) {
       this.sidebarEnabled = !!opts.sidebar_enabled;
+    }
+    if ('sidebar_type' in opts || 'sidebarType' in opts) {
+      this.sidebarType = this._normalizeSidebarType_(opts.sidebar_type ?? opts.sidebarType);
     }
     if ('sidebar_items' in opts || 'sidebar_content' in opts) {
       this.sidebarItems = this._normalizeSidebarItems_(opts.sidebar_items ?? opts.sidebar_content, { enabled: !!this.sidebarEnabled });
     } else if ('sidebar_enabled' in opts) {
       this.sidebarItems = this._normalizeSidebarItems_(this.sidebarItems, { enabled: !!this.sidebarEnabled });
     }
+    if ('sidebar_appearance' in opts) this.sidebarAppearance = normalizeSidebarAppearance(opts.sidebar_appearance);
     if ('sidebar_style' in opts) {
       this.sidebarStyle = this._normalizeSidebarStyle_(opts.sidebar_style);
     }
@@ -343,6 +384,11 @@ const dashboardApiMethods = {
       this.tabsPosition = this._normalizeTabsPosition_(tabsPosition);
       this._syncTabsPlacement_?.();
     }
+    if ('tabs_style' in opts) {
+      this.tabsStyle = normalizeTabStyle(opts.tabs_style);
+      this._syncTabsSize_?.();
+    }
+    if ('tabs_center_on_canvas' in opts) this.tabsCenterOnCanvas = !!opts.tabs_center_on_canvas;
     if ('tabs_size' in opts) {
       this.tabsSize = this._normalizeTabsSize_(opts.tabs_size);
       this._syncTabsSize_?.();
@@ -352,6 +398,8 @@ const dashboardApiMethods = {
       if (!validTabIds.has(this.defaultTab)) this.defaultTab = this.tabs[0]?.id || 'default';
       if (!validTabIds.has(this.activeTab)) this.activeTab = this.defaultTab;
     }
+    this.tabsAutoReturnTab = this._resolveTabsAutoReturnTarget_?.(this.tabsAutoReturnTab) || this.defaultTab;
+    this._updateTabsAutoReturnSettings_?.();
 
 
     this._applyDashboardThemeStyling_?.();
@@ -370,7 +418,7 @@ const dashboardApiMethods = {
       this._updateStoreBadge?.();
       this._applyAutoScale?.();
     }
-    if ('tabs' in opts || 'default_tab' in opts || 'hide_tabs_when_single' in opts || 'tabs_position' in opts || 'tabs_size' in opts || 'sidebar_enabled' in opts || 'sidebar_items' in opts || 'sidebar_content' in opts || 'sidebar_style' in opts || 'sidebar_density' in opts || 'sidebar_accent' in opts || 'sidebar_header' in opts || 'sidebar_header_type' in opts || 'sidebar_canvas_height' in opts || 'sidebar_cards' in opts || 'sidebar_home_image' in opts || 'sidebar_house_image' in opts || 'sidebar_home_image_url' in opts || 'sidebar_calendar_entities' in opts || 'sidebar_calendars' in opts) {
+    if ('tabs_center_on_canvas' in opts || 'tabs' in opts || 'default_tab' in opts || 'hide_tabs_when_single' in opts || 'tabs_position' in opts || 'tabs_size' in opts || 'tabs_style' in opts || 'tabs_auto_return_enabled' in opts || 'tabs_auto_return_tab' in opts || 'tabs_auto_return_delay' in opts || 'sidebar_enabled' in opts || 'sidebar_type' in opts || 'sidebarType' in opts || 'sidebar_items' in opts || 'sidebar_content' in opts || 'sidebar_appearance' in opts || 'sidebar_style' in opts || 'sidebar_density' in opts || 'sidebar_accent' in opts || 'sidebar_header' in opts || 'sidebar_header_type' in opts || 'sidebar_canvas_height' in opts || 'sidebar_cards' in opts || 'sidebar_home_image' in opts || 'sidebar_house_image' in opts || 'sidebar_home_image_url' in opts || 'sidebar_calendar_entities' in opts || 'sidebar_calendars' in opts) {
       this._renderTabs?.();
       this._renderSidebar_?.();
       this._applyActiveTab?.();
@@ -394,6 +442,7 @@ const dashboardApiMethods = {
       auto_save_debounce: { type: 'number' },
       debug: { type: 'boolean' },
       disable_overlap: { type: 'boolean' },
+      edit_permissions: { type: 'object' },
       edit_mode_pin: { type: 'string' },
       animate_cards: { type: 'boolean' },
       'play-loading_animation': { type: 'boolean' },
@@ -410,6 +459,8 @@ const dashboardApiMethods = {
       connectors: { type: 'array' },
       responsive_connectors: { type: 'object' },
       container_background: { type: 'string' },
+      container_radius: { type: 'number', minimum: 0, maximum: 96 },
+      container_border: { type: 'boolean' },
       apply_background_to_page: { type: 'boolean' },
       card_background: { type: 'string' },
       card_overflow: { type: 'string' },
@@ -424,9 +475,21 @@ const dashboardApiMethods = {
       container_preset_orientation: { type: 'string' },
       tabs: { type: 'array' },
       tabs_position: { type: 'string' },
-      tabs_size: { type: 'number' },
+      tabs_center_on_canvas: { type: 'boolean' },
+      tabs_size: { type: 'number', minimum: 1, maximum: 1000 },
+      tabs_style: { type: 'object' },
       default_tab: { type: 'string' },
       hide_tabs_when_single: { type: 'boolean' },
+      tabs_auto_return_enabled: { type: 'boolean' },
+      active_tab: { type: 'string', runtime: true },
+      tabs_auto_return_tab: { type: 'string' },
+      tabs_auto_return_delay: { type: 'number' },
+      sidebar_enabled: { type: 'boolean' },
+      sidebar_type: { type: 'string' },
+      sidebar_appearance: { type: 'object' },
+      sidebar_header: { type: 'string' },
+      sidebar_canvas_height: { type: 'number' },
+      sidebar_cards: { type: 'array' },
       layers_enabled: { type: 'boolean' },
       layers_button_details: { type: 'boolean' },
       layers: { type: 'array' },
@@ -468,6 +531,8 @@ const dashboardApiMethods = {
       responsiveViewportAspectLocks: 'responsive_viewport_aspect_locks',
       responsiveConnectors: 'responsive_connectors',
       containerBackground: 'container_background',
+      containerRadius: 'container_radius',
+      containerBorder: 'container_border',
       applyBackgroundToPage: 'apply_background_to_page',
       cardBackground: 'card_background',
       cardOverflow: 'card_overflow',
@@ -485,8 +550,18 @@ const dashboardApiMethods = {
       containerPresetOrientation: 'container_preset_orientation',
       tabsPosition: 'tabs_position',
       tabsSize: 'tabs_size',
+      tabsCenterOnCanvas: 'tabs_center_on_canvas',
       defaultTab: 'default_tab',
+      activeTab: 'active_tab',
       hideTabsWhenSingle: 'hide_tabs_when_single',
+      tabsAutoReturnEnabled: 'tabs_auto_return_enabled',
+      tabsAutoReturnTab: 'tabs_auto_return_tab',
+      tabsAutoReturnDelay: 'tabs_auto_return_delay',
+      sidebarEnabled: 'sidebar_enabled',
+      sidebarType: 'sidebar_type',
+      sidebarHeader: 'sidebar_header',
+      sidebarCanvasHeight: 'sidebar_canvas_height',
+      sidebarCards: 'sidebar_cards',
       layersEnabled: 'layers_enabled',
       enable_layers: 'layers_enabled',
       layersButtonDetails: 'layers_button_details',
@@ -574,31 +649,42 @@ const dashboardApiMethods = {
         console.warn(`[ddc:api] Unknown dashboard setting "${rawKey}".`);
         continue;
       }
-      out[key] = this._coerceDashboardApiSettingValue_(key, rawValue);
+      out[key] = key === 'active_tab' ? rawValue : this._coerceDashboardApiSettingValue_(key, rawValue);
     }
     return out;
   },
 
   _listDashboardApiSettings_() {
     const schema = this._getDashboardSettingsApiSchema_?.() || {};
-    const options = this._exportableOptions?.() || {};
+    const options = this._getDashboardApiState_();
     const keys = Array.from(new Set([...Object.keys(schema), ...Object.keys(options)])).sort();
     return keys.map((key) => ({
       key,
       type: schema[key]?.type || (Array.isArray(options[key]) ? 'array' : typeof options[key]),
       value: this._cloneDashboardApiValue_(options[key]),
       boolean: (schema[key]?.type || typeof options[key]) === 'boolean',
+      ...(schema[key]?.runtime ? { runtime: true } : {}),
     }));
   },
 
   _getDashboardApiSetting_(key) {
     const normalized = this._normalizeDashboardSettingApiKey_(key);
+    if (normalized === 'active_tab') return this.activeTab;
     const options = this._exportableOptions?.() || {};
     return this._cloneDashboardApiValue_(options[normalized]);
   },
 
+  _getDashboardApiState_() {
+    return { ...(this._exportableOptions?.() || {}), active_tab: this.activeTab };
+  },
+
   async _persistDashboardApiSettings_(opts = {}) {
+    if (this._canEditDashboard_?.() === false) throw new Error('Editing this dashboard is not allowed for this user.');
     const options = this._exportableOptions?.() || {};
+    if (this._getStorageMode_?.() === 'lovelace') {
+      const saved = await this._saveLayout?.(true);
+      return { backend: false, yaml: saved === true, local: false, lovelace: saved === true };
+    }
     const result = { backend: false, yaml: false, local: false };
     try {
       if (this.storageKey && opts.backend !== false) {
@@ -624,12 +710,32 @@ const dashboardApiMethods = {
   async _setDashboardApiSettings_(patch = {}, opts = {}) {
     const normalized = this._normalizeDashboardApiPatch_(patch);
     const keys = Object.keys(normalized);
-    if (!keys.length) return this._exportableOptions?.() || {};
-    const before = this._exportableOptions?.() || {};
-    this._applyImportedOptions(normalized, opts.recalc !== false);
-    this._markDirty?.('api-settings');
-    this._updateApplyBtn?.();
-    const after = this._exportableOptions?.() || {};
+    if (this._canEditDashboard_?.() === false && keys.some(key => key !== 'active_tab')) {
+      throw new Error('Editing this dashboard is not allowed for this user.');
+    }
+    if (!keys.length) return this._cloneDashboardApiValue_(this._getDashboardApiState_());
+    const hasActiveTab = Object.prototype.hasOwnProperty.call(normalized, 'active_tab');
+    if (hasActiveTab) {
+      const tabs = Array.isArray(normalized.tabs) ? normalized.tabs : (this.tabs || []);
+      const validIds = tabs.length ? tabs.map((tab) => tab.id) : [normalized.default_tab || this.defaultTab || 'default'];
+      if (typeof normalized.active_tab !== 'string' || !validIds.includes(normalized.active_tab)) {
+        throw new Error(`Unknown active_tab: ${String(normalized.active_tab)}. Use an existing tab ID.`);
+      }
+    }
+    const { active_tab: activeTab, ...settingsPatch } = normalized;
+    const settingsKeys = Object.keys(settingsPatch);
+    const before = this._getDashboardApiState_();
+    if (settingsKeys.length) {
+      this._applyImportedOptions(settingsPatch, opts.recalc !== false);
+      this._markDirty?.('api-settings');
+      this._updateApplyBtn?.();
+    }
+    // Applying a new tabs list may choose a fallback. For an explicit runtime
+    // target, let the normal switch path own that transition and its event.
+    if (hasActiveTab) this.activeTab = before.active_tab;
+    const switched = hasActiveTab ? await this._switchActiveTab_(activeTab, { reason: 'api' }) : false;
+    const after = this._getDashboardApiState_();
+    if (!settingsKeys.length && !switched) return this._cloneDashboardApiValue_(after);
     const detail = {
       source: 'api',
       keys,
@@ -642,7 +748,7 @@ const dashboardApiMethods = {
       bubbles: true,
       composed: true,
     }));
-    if (opts.persist === true) {
+    if (opts.persist === true && settingsKeys.length) {
       detail.persist = await this._persistDashboardApiSettings_(opts);
     }
     return this._cloneDashboardApiValue_(after);
@@ -656,7 +762,7 @@ const dashboardApiMethods = {
         return owner._listDashboardApiSettings_?.() || [];
       },
       all() {
-        return owner._cloneDashboardApiValue_(owner._exportableOptions?.() || {});
+        return owner._cloneDashboardApiValue_(owner._getDashboardApiState_());
       },
       options() {
         return this.all();
@@ -706,6 +812,7 @@ const dashboardApiMethods = {
         return owner._openDashboardSettings?.();
       },
       saveLayout(silent = true) {
+        if (owner._canEditDashboard_?.() === false) return false;
         return owner._saveLayout?.(silent);
       },
       setEditMode(enabled) {

@@ -7,7 +7,7 @@ packaging model.
 
 | Component | Repository | Last imported commit |
 | --- | --- | --- |
-| Frontend | https://github.com/Prosono/Drag-And-Drop-Card | `9298bc30f3b42cc6cfa966b3033f3cad1953ca48` |
+| Frontend | https://github.com/Prosono/Drag-And-Drop-Card | `66b19a043b6ee13d0a0f312adc3e061c52bb6339` (v2.2.3) |
 | Backend | https://github.com/Prosono/Drag-And-Drop-Card-Backend | `254639dc6738612f2a9a19009ea683710413cc07` |
 
 The frontend Git history is retained in this repository. The backend was

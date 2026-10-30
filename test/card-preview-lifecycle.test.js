@@ -7,6 +7,7 @@ import {
   mergeVisualEditorConfig,
   mountCardPreviewElement,
   readVisualEditorConfig,
+  resolveVisualEditorConfigForCommit,
 } from '../src/cards/smart-card-picker.js';
 import { installCardBuilderMethods } from '../src/cards/card-renderer.js';
 
@@ -158,6 +159,71 @@ test('HA form card editor bridge exposes the latest visual value when saving', (
   });
 });
 
+test('visual editor event keeps show_name false when editor getConfig is stale', () => {
+  const staleEditor = {
+    getConfig() {
+      return {
+        type: 'button',
+        entity: 'light.office',
+        show_name: true,
+        show_icon: true,
+      };
+    },
+  };
+
+  assert.deepEqual(
+    resolveVisualEditorConfigForCommit(
+      {
+        type: 'button',
+        entity: 'light.office',
+        show_name: false,
+        show_icon: true,
+      },
+      'button',
+      staleEditor,
+      true,
+    ),
+    {
+      type: 'button',
+      entity: 'light.office',
+      show_name: false,
+      show_icon: true,
+    },
+  );
+});
+
+test('visual editor config is still read as a fallback when no change event fires', () => {
+  const silentEditor = {
+    getConfig() {
+      return {
+        type: 'button',
+        entity: 'light.office',
+        show_name: false,
+      };
+    },
+  };
+
+  assert.deepEqual(
+    resolveVisualEditorConfigForCommit(
+      {
+        type: 'button',
+        entity: 'light.office',
+        show_name: true,
+        show_icon: true,
+      },
+      'button',
+      silentEditor,
+      false,
+    ),
+    {
+      type: 'button',
+      entity: 'light.office',
+      show_name: false,
+      show_icon: true,
+    },
+  );
+});
+
 test('saving a visual edit replaces and renders only the edited card', async () => {
   const previousRaf = globalThis.requestAnimationFrame;
   globalThis.requestAnimationFrame = (callback) => {
@@ -244,4 +310,16 @@ test('Update closes the card picker before replacement and persistence run', asy
   assert.ok(closeIndex >= 0 && closeIndex < updateIndex);
   assert.match(commitSource, /window\.setTimeout\(async \(\) => \{/);
   assert.match(commitSource, /if \(!currentConfig \|\| commitInFlight\) return;/);
+});
+
+test('issue 40: pasted YAML replaces picker defaults even when the visual editor is stale', () => {
+  const yaml = { type: 'markdown', title: 'Forecast', content: '{{ states("sensor.weather") }}' };
+  const stale = { getConfig: () => ({ type: 'entities', entities: ['sensor.old'] }) };
+  assert.deepEqual(resolveVisualEditorConfigForCommit(yaml, 'markdown', stale, false, true), yaml);
+});
+
+test('issue 40: same-type YAML replacement preserves deleted fields after reopening Visual', () => {
+  const yaml = { type: 'entities', entities: ['sensor.new'] };
+  const stale = { getConfig: () => ({ type: 'entities', title: 'Old title', entities: ['sensor.old'], show_header_toggle: true }) };
+  assert.deepEqual(resolveVisualEditorConfigForCommit(yaml, 'entities', stale, false, true), yaml);
 });

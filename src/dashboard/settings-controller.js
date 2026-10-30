@@ -1,3 +1,9 @@
+import { setupEditUserPicker } from './edit-user-picker.js';
+import { normalizeEditPermissions } from '../core/edit-permissions.js';
+import { normalizeContainerRadius } from '../layout/container-style.js';
+import { resolveSidebarWidgets } from '../layout/sidebar-widgets.js';
+import { normalizeSidebarAppearance, sidebarAppearanceFields, applySidebarAppearance } from '../layout/sidebar-appearance.js';
+import { normalizeTabStyle, tabStyleFields, normalizeTabIconColor, applyTabIconColor } from '../layout/tab-style.js';
 /*
  * Dashboard settings panel controller.
  *
@@ -27,6 +33,7 @@ const dashboardSettingsMethods = {
   },
 
   _openDashboardSettings() {
+    if (this._canEditDashboard_?.() === false) return false;
     // Build modal container
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -62,7 +69,11 @@ const dashboardSettingsMethods = {
     this.shadowRoot.appendChild(modal);
     this._translateDashboardUi_?.(modal);
 
-    const settingsTabs = Array.from(modal.querySelectorAll('[data-settings-tab]'));
+    // Deferred settings can remain in the template for later development, but
+    // must not participate in keyboard navigation, persisted tab restoration,
+    // or section activation while their tab is hidden.
+    const settingsTabs = Array.from(modal.querySelectorAll('[data-settings-tab]'))
+      .filter((btn) => !btn.hidden && btn.getAttribute('aria-hidden') !== 'true');
     const settingsSections = Array.from(modal.querySelectorAll('[data-settings-section]'));
     const settingsBody = modal.querySelector('.settings-body');
     const settingsTabKeys = new Set(settingsTabs.map((btn) => btn.dataset.settingsTab).filter(Boolean));
@@ -167,15 +178,45 @@ const dashboardSettingsMethods = {
     const outerGridBufferCellsControl = modal.querySelector('[data-outer-grid-buffer-cells]');
     const chkOverlap = modal.querySelector('#ddc-setting-disableOverlap');
     const inpEditPin = modal.querySelector('#ddc-setting-editPin');
+    const editPolicy = normalizeEditPermissions(this.editPermissions);
+    const selEditPolicy = modal.querySelector('#ddc-edit-permissions');
+    const selectedEditUsers = new Set(editPolicy.users);
+    const userPicker = setupEditUserPicker(modal, this._hass || this.hass, selectedEditUsers);
+    selEditPolicy.value = editPolicy.mode;
+    const syncEditPolicy = () => {
+      const selected = selEditPolicy.value === 'selected';
+      modal.querySelector('#ddc-edit-users-row').hidden = !selected;
+      if (selected) userPicker.load();
+    };
+    selEditPolicy.addEventListener('change', syncEditPolicy);
+    syncEditPolicy();
     const selDashboardTheme = modal.querySelector('#ddc-setting-dashboardTheme');
     const selEditorThemeMode = modal.querySelector('#ddc-setting-editorThemeMode');
     const initialEditorThemeMode = this._getEditorThemeMode_?.() || 'light';
+    const selStorageMode = modal.querySelector('#ddc-setting-storageMode');
+    const storageModeConfirm = modal.querySelector('#ddc-storage-mode-confirm');
+    const storageModeConfirmRow = modal.querySelector('#ddc-storage-mode-confirm-row');
+    const storageModeError = modal.querySelector('#ddc-storage-mode-error');
+    const initialStorageMode = this._getStorageMode_?.() || 'backend';
+    if (selStorageMode) selStorageMode.value = initialStorageMode;
+    selStorageMode?.addEventListener('change', () => {
+      storageModeConfirmRow.hidden = selStorageMode.value === initialStorageMode;
+      storageModeConfirm.checked = false;
+      storageModeError.hidden = true;
+    });
+    const showStorageModeError = (message) => {
+      storageModeError.textContent = message;
+      storageModeError.hidden = false;
+      activateSettingsTab('advanced');
+    };
     let editorThemeModeCommitted = false;
     const txtDashboardThemeHint = modal.querySelector('#ddc-setting-dashboardThemeHint');
     const chkDashboardThemeOverrideAllDesign = modal.querySelector('#ddc-setting-dashboardThemeOverrideAllDesign');
     const txtDashboardThemeOverrideAllDesignHint = modal.querySelector('#ddc-setting-dashboardThemeOverrideAllDesignHint');
     const dashboardThemeColorWarning = modal.querySelector('[data-theme-color-warning]');
     const inpCBg     = modal.querySelector('#ddc-setting-containerBg');
+    const inpContainerRadius = modal.querySelector('#ddc-setting-containerRadius');
+    const chkContainerBorder = modal.querySelector('#ddc-setting-containerBorder');
     const chkApplyPageBg = modal.querySelector('#ddc-setting-applyPageBackground');
     const inpCardBg  = modal.querySelector('#ddc-setting-cardBg');
     const selCardOverflow = modal.querySelector('#ddc-setting-cardOverflow');
@@ -260,18 +301,68 @@ const dashboardSettingsMethods = {
     const rngYtOpacity       = modal.querySelector('#ddc-youtube-opacity');
     const outYtOpacity       = modal.querySelector('#ddc-youtube-opacity-out');
     const selTabsPosition    = modal.querySelector('#ddc-setting-tabsPosition');
+    modal.querySelector('#ddc-open-sidebar-from-tabs')?.addEventListener('click', () => activateSettingsTab('sidebar'));
+    const tabStyleInputs = tabStyleFields.map(([key]) => [key, modal.querySelector(`#ddc-tab-style-${key}`)]);
+    const tabShadowInput = modal.querySelector('#ddc-tab-style-shadow');
+    const populateTabStyle = (value) => {
+      const normalized = normalizeTabStyle(value);
+      for (const [key, input] of tabStyleInputs) if (input) input.value = normalized[key] ?? '';
+      if (tabShadowInput) tabShadowInput.checked = normalized.active_shadow !== false;
+    };
+    populateTabStyle(this.tabsStyle);
+    modal.querySelector('#ddc-tab-style-reset')?.addEventListener('click', () => populateTabStyle({}));
+    const chkTabsCenterOnCanvas = modal.querySelector('#ddc-setting-tabsCenterOnCanvas');
     const rngTabsSize        = modal.querySelector('#ddc-setting-tabsSize');
-    const outTabsSize        = modal.querySelector('#ddc-tabsSizeOut');
+    const inpTabsSize        = modal.querySelector('#ddc-setting-tabsSizeNumber');
+    const chkTabsAutoReturn  = modal.querySelector('#ddc-setting-tabsAutoReturnEnabled');
+    const selTabsAutoReturnTab = modal.querySelector('#ddc-setting-tabsAutoReturnTab');
+    const inpTabsAutoReturnMinutes = modal.querySelector('#ddc-setting-tabsAutoReturnMinutes');
+    const tabsAutoReturnControls = modal.querySelector('#ddc-tabsAutoReturnControls');
     const chkSidebarEnabled  = modal.querySelector('#ddc-setting-sidebarEnabled');
-    const inpSidebarCanvasHeight = modal.querySelector('#ddc-setting-sidebarCanvasHeight');
-    const sidebarItemInputs = Array.from(modal.querySelectorAll('[id^="ddc-setting-sidebarItem"]'));
-    const sidebarHeaderInputs = Array.from(modal.querySelectorAll('input[name="ddc-sidebar-header"]'));
-    const sidebarOrderListEl = modal.querySelector('#ddc-sidebar-order-list');
-    const inpSidebarHomeImage = modal.querySelector('#ddc-setting-sidebarHomeImage');
-    const inpSidebarHomeImageFile = modal.querySelector('#ddc-setting-sidebarHomeImageFile');
-    const btnSidebarHomeImageClear = modal.querySelector('#ddc-setting-sidebarHomeImageClear');
-    const sidebarHomeImagePreview = modal.querySelector('#ddc-setting-sidebarHomeImagePreview');
-    const inpSidebarCalendarEntities = modal.querySelector('#ddc-setting-sidebarCalendarEntities');
+    const sidebarTypeInputs = Array.from(modal.querySelectorAll('input[name="ddc-sidebar-type"]'));
+    const sidebarContextControls = modal.querySelector('#ddc-sidebar-context-controls');
+    const sidebarPreview = modal.querySelector('#ddc-sidebar-preview');
+    const sidebarPreviewHeader = modal.querySelector('#ddc-sidebar-preview-header');
+    const initialSidebarSettings = {
+      appearance: normalizeSidebarAppearance(this.sidebarAppearance),
+      enabled: !!this.sidebarEnabled,
+      type: this._normalizeSidebarType_?.(this.sidebarType) || 'minimal',
+      header: this._normalizeSidebarHeader_?.(this.sidebarHeader) || 'date_time',
+      canvasHeight: this._normalizeSidebarCanvasHeight_?.(this.sidebarCanvasHeight) || 520,
+      cards: this._cloneJson_?.(this.sidebarCards || this._config?.sidebar_cards || []) || [],
+    };
+    const sidebarAppearanceInputs = sidebarAppearanceFields.map(([key]) => [key, modal.querySelector(`#ddc-sidebar-appearance-${key}`)]);
+    const sidebarTitleInput = modal.querySelector('#ddc-sidebar-title');
+    const sidebarWidgetInputs = Array.from(modal.querySelectorAll('[data-sidebar-widget]'));
+    const sidebarWidgetStyle = modal.querySelector('#ddc-sidebar-widget-style');
+    const sidebarAlignment = modal.querySelector('#ddc-sidebar-alignment');
+    const sidebarWeatherEntity = modal.querySelector('#ddc-sidebar-weather-entity');
+    const sidebarCalendarEntities = modal.querySelector('#ddc-sidebar-calendar-entities');
+    const populateSidebarAppearance = (value, { content = true } = {}) => {
+      const appearance = normalizeSidebarAppearance(value);
+      for (const [key, input] of sidebarAppearanceInputs) if (input) input.value = appearance[key] ?? '';
+      sidebarWidgetStyle.value = appearance.widget_style || 'soft';
+      sidebarAlignment.value = appearance.alignment || 'center';
+      if (content) {
+        if (sidebarTitleInput) sidebarTitleInput.value = appearance.title ?? 'Your spaces';
+        const widgets = resolveSidebarWidgets(appearance, initialSidebarSettings.header);
+        for (const input of sidebarWidgetInputs) input.checked = widgets.includes(input.dataset.sidebarWidget);
+        sidebarWeatherEntity.value = appearance.weather_entity || '';
+        sidebarCalendarEntities.value = (appearance.calendar_entities || []).join(', ');
+      }
+    };
+    const readSidebarAppearance = () => normalizeSidebarAppearance({
+      ...Object.fromEntries(sidebarAppearanceInputs.map(([key,input]) => [key,input?.value])),
+      title: sidebarTitleInput?.value ?? 'Your spaces',
+      widgets: sidebarWidgetInputs.filter(input => input.checked).map(input => input.dataset.sidebarWidget),
+      widget_style: sidebarWidgetStyle.value,
+      alignment: sidebarAlignment.value,
+      weather_entity: sidebarWeatherEntity.value,
+      calendar_entities: sidebarCalendarEntities.value.split(',').map(v => v.trim()).filter(Boolean),
+    });
+    populateSidebarAppearance(initialSidebarSettings.appearance);
+    modal.querySelector('#ddc-sidebar-manage-tabs')?.addEventListener('click', () => modal.querySelector('[data-settings-tab="tabs"]')?.click());
+    let sidebarSettingsCommitted = false;
     const chkLayersEnabled   = modal.querySelector('#ddc-setting-layersEnabled');
     const chkLayersButtonDetails = modal.querySelector('#ddc-setting-layersButtonDetails');
     const layersListEl       = modal.querySelector('#ddc-layers-list');
@@ -1219,128 +1310,135 @@ const dashboardSettingsMethods = {
     };
     writeParticleControlsFromConfig();
     if (selTabsPosition) selTabsPosition.value = this._normalizeTabsPosition_(this.tabsPosition || 'top');
-    if (rngTabsSize) {
-      const syncTabsSizeOutput = () => {
-        const value = this._normalizeTabsSize_(rngTabsSize.value);
-        rngTabsSize.value = String(value);
-        if (outTabsSize) outTabsSize.textContent = `${value}%`;
+    if (chkTabsCenterOnCanvas) chkTabsCenterOnCanvas.checked = !!this.tabsCenterOnCanvas;
+    if (rngTabsSize && inpTabsSize) {
+      const syncTabsSize = (raw) => {
+        const value = String(this._normalizeTabsSize_(raw));
+        rngTabsSize.value = value;
+        inpTabsSize.value = value;
       };
-      rngTabsSize.value = String(this._normalizeTabsSize_(this.tabsSize));
-      rngTabsSize.addEventListener('input', syncTabsSizeOutput);
-      syncTabsSizeOutput();
-    }
-    const sidebarItemsForSettings = this._normalizeSidebarItems_(this.sidebarItems, { enabled: !!this.sidebarEnabled });
-    if (chkSidebarEnabled) chkSidebarEnabled.checked = !!this.sidebarEnabled;
-    const sidebarHeaderForSettings = this._normalizeSidebarHeader_(this.sidebarHeader);
-    sidebarHeaderInputs.forEach((input) => {
-      input.checked = input.value === sidebarHeaderForSettings;
-    });
-    if (inpSidebarCanvasHeight) {
-      inpSidebarCanvasHeight.value = String(this._normalizeSidebarCanvasHeight_(this.sidebarCanvasHeight));
-    }
-    sidebarItemInputs.forEach((input) => {
-      input.checked = sidebarItemsForSettings.includes(input.value);
-    });
-    const sidebarDefinitions = this._getSidebarItemDefinitions_?.() || [];
-    const sidebarDefinitionById = new Map(sidebarDefinitions.map((item) => [item.id, item]));
-    let sidebarOrderDraft = this._normalizeSidebarItems_(sidebarItemsForSettings, { enabled: !!this.sidebarEnabled });
-    const renderSidebarOrderList = () => {
-      if (!sidebarOrderListEl) return;
-      const safe = (value) => this._safe?.(value) || String(value ?? '');
-      sidebarOrderListEl.innerHTML = '';
-      const checked = sidebarItemInputs.filter((input) => input.checked).map((input) => input.value);
-      sidebarOrderDraft = sidebarOrderDraft.filter((item) => checked.includes(item));
-      checked.forEach((item) => {
-        if (!sidebarOrderDraft.includes(item)) sidebarOrderDraft.push(item);
+      syncTabsSize(this.tabsSize);
+      rngTabsSize.addEventListener('input', () => syncTabsSize(rngTabsSize.value));
+      inpTabsSize.addEventListener('input', () => {
+        // Let users finish typing before clamping incomplete or out-of-range input.
+        if (inpTabsSize.value !== '' && inpTabsSize.validity.valid) rngTabsSize.value = inpTabsSize.value;
       });
-      if (!sidebarOrderDraft.length) {
-        sidebarOrderListEl.innerHTML = `
-          <div class="sidebar-order-empty">
-            <ha-icon icon="mdi:sort-variant-off" aria-hidden="true"></ha-icon>
-            <span>Select modules above to arrange the Sidebar.</span>
-          </div>
-        `;
-        return;
+      inpTabsSize.addEventListener('change', () => syncTabsSize(inpTabsSize.value));
+    }
+    if (chkTabsAutoReturn) chkTabsAutoReturn.checked = !!this.tabsAutoReturnEnabled;
+    if (inpTabsAutoReturnMinutes) {
+      const delay = this._normalizeTabsAutoReturnDelay_?.(this.tabsAutoReturnDelay) || (5 * 60 * 1000);
+      inpTabsAutoReturnMinutes.value = String(Math.max(1, Math.round(delay / 60000)));
+    }
+    const syncTabsAutoReturnControls = () => {
+      if (tabsAutoReturnControls) tabsAutoReturnControls.hidden = !chkTabsAutoReturn?.checked;
+      chkTabsAutoReturn?.setAttribute('aria-expanded', String(!!chkTabsAutoReturn.checked));
+    };
+    chkTabsAutoReturn?.addEventListener('change', syncTabsAutoReturnControls);
+    syncTabsAutoReturnControls();
+    const sidebarHeaderDraft = initialSidebarSettings.header;
+    const getSidebarTypeDraft = () => this._normalizeSidebarType_?.(
+      sidebarTypeInputs.find((input) => input.checked)?.value || initialSidebarSettings.type
+    ) || 'minimal';
+    const updateSidebarSettingsPreview = ({ applyToDashboard = true } = {}) => {
+      const enabled = !!chkSidebarEnabled?.checked;
+      const type = getSidebarTypeDraft();
+      const header = sidebarHeaderDraft;
+      const appearance = readSidebarAppearance();
+      const height = initialSidebarSettings.canvasHeight;
+      sidebarContextControls?.classList?.toggle?.('is-minimal', type === 'minimal');
+      modal.querySelector('#ddc-sidebar-weather-row').hidden = !appearance.widgets.includes('weather');
+      modal.querySelector('#ddc-sidebar-calendar-row').hidden = !appearance.widgets.includes('calendar');
+      if (sidebarPreview) {
+        sidebarPreview.dataset.sidebarType = type;
+        sidebarPreview.dataset.sidebarEnabled = enabled ? 'true' : 'false';
+        sidebarPreview.dataset.sidebarHeader = header;
+        applySidebarAppearance(sidebarPreview, appearance);
+        const previewNav = sidebarPreview.querySelector('.sidebar-preview-nav');
+        if (previewNav) {
+          previewNav.replaceChildren();
+          if (type === 'expanded' && appearance.title) {
+            const title = document.createElement('p');
+            title.className = 'sidebar-preview-title';
+            title.textContent = appearance.title;
+            previewNav.appendChild(title);
+          }
+          for (const tab of this.tabs || []) {
+            const item = document.createElement('span');
+            if (tab.id === this.activeTab) item.className = 'active';
+            const iconBox = document.createElement('span');
+            iconBox.className = 'sidebar-preview-nav-icon';
+            const icon = document.createElement('ha-icon');
+            icon.setAttribute('icon', tab.icon || 'mdi:view-dashboard-outline');
+            applyTabIconColor(icon, tab.icon_color);
+            iconBox.appendChild(icon);
+            const label = document.createElement('b');
+            label.textContent = tab.label || tab.id;
+            item.append(iconBox, label);
+            previewNav.appendChild(item);
+          }
+        }
       }
-      sidebarOrderDraft.forEach((item, index) => {
-        const def = sidebarDefinitionById.get(item) || { id: item, label: item, icon: 'mdi:drag' };
-        const row = document.createElement('div');
-        row.className = 'sidebar-order-row';
-        row.dataset.sidebarOrderItem = item;
-        row.innerHTML = `
-          <div class="sidebar-order-row-main">
-            <span class="sidebar-order-handle"><ha-icon icon="mdi:drag" aria-hidden="true"></ha-icon></span>
-            <span class="sidebar-order-icon"><ha-icon icon="${safe(def.icon)}" aria-hidden="true"></ha-icon></span>
-            <strong>${safe(def.label)}</strong>
-          </div>
-          <div class="sidebar-order-actions">
-            <button type="button" class="icon-btn" data-sidebar-order-move="-1" aria-label="Move ${safe(def.label)} up" ${index === 0 ? 'disabled' : ''}>
-              <ha-icon icon="mdi:chevron-up"></ha-icon>
-            </button>
-            <button type="button" class="icon-btn" data-sidebar-order-move="1" aria-label="Move ${safe(def.label)} down" ${index === sidebarOrderDraft.length - 1 ? 'disabled' : ''}>
-              <ha-icon icon="mdi:chevron-down"></ha-icon>
-            </button>
-          </div>
-        `;
-        row.querySelectorAll('[data-sidebar-order-move]').forEach((button) => {
-          button.addEventListener('click', () => {
-            const direction = Number(button.dataset.sidebarOrderMove || 0);
-            const nextIndex = index + direction;
-            if (nextIndex < 0 || nextIndex >= sidebarOrderDraft.length) return;
-            const [moved] = sidebarOrderDraft.splice(index, 1);
-            sidebarOrderDraft.splice(nextIndex, 0, moved);
-            renderSidebarOrderList();
-          });
-        });
-        sidebarOrderListEl.appendChild(row);
-      });
-    };
-    const syncSidebarOrderDraft = () => renderSidebarOrderList();
-    sidebarItemInputs.forEach((input) => input.addEventListener('change', syncSidebarOrderDraft));
-    syncSidebarOrderDraft();
-
-    const updateSidebarHomeImagePreview = () => {
-      if (!sidebarHomeImagePreview) return;
-      const src = String(inpSidebarHomeImage?.value || '').trim();
-      sidebarHomeImagePreview.classList.toggle('has-image', !!src);
-      sidebarHomeImagePreview.innerHTML = src
-        ? `<img src="${this._safe(src)}" alt="" loading="lazy" />`
-        : `<ha-icon icon="mdi:image-outline" aria-hidden="true"></ha-icon><span>No house image selected</span>`;
-    };
-    if (inpSidebarHomeImage) {
-      inpSidebarHomeImage.value = this._getSidebarHomeImage_?.() || '';
-      inpSidebarHomeImage.addEventListener('input', updateSidebarHomeImagePreview);
-    }
-    updateSidebarHomeImagePreview();
-    inpSidebarHomeImageFile?.addEventListener('change', () => {
-      const file = inpSidebarHomeImageFile.files?.[0];
-      if (!file || !inpSidebarHomeImage) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        inpSidebarHomeImage.value = String(reader.result || '');
-        updateSidebarHomeImagePreview();
+      const syncPreviewColors = () => {
+        if (!sidebarPreview || !this.sidebarHost) return;
+        if (sidebarPreviewHeader) {
+          sidebarPreviewHeader.replaceChildren();
+          const widgets = this._createSidebarHeader_?.(new Date());
+          sidebarPreviewHeader.hidden = !widgets;
+          if (widgets) sidebarPreviewHeader.appendChild(widgets);
+        }
+        const paint = getComputedStyle(this.sidebarHost);
+        const active = this.sidebarHost.querySelector('.ddc-sidebar-tab.active');
+        const activePaint = active ? getComputedStyle(active) : null;
+        sidebarPreview.style.setProperty('--ddc-side-background', paint.backgroundColor);
+        sidebarPreview.style.setProperty('--ddc-side-text_color', paint.color);
+        sidebarPreview.style.setProperty('--ddc-rail-text', paint.color);
+        sidebarPreview.style.setProperty('--ddc-rail-bg', paint.backgroundColor);
+        if (activePaint) {
+          sidebarPreview.style.setProperty('--ddc-side-active_background', activePaint.backgroundColor);
+          sidebarPreview.style.setProperty('--ddc-side-active_text_color', activePaint.color);
+          sidebarPreview.style.setProperty('--ddc-rail-active', activePaint.backgroundColor);
+          sidebarPreview.style.setProperty('--ddc-rail-active-ink', activePaint.color);
+        }
       };
-      reader.readAsDataURL(file);
+      if (!applyToDashboard) { syncPreviewColors(); return; }
+      this.sidebarEnabled = enabled;
+      this.sidebarType = type;
+      this.sidebarAppearance = appearance;
+      this.sidebarHeader = sidebarHeaderDraft;
+      this.sidebarCanvasHeight = height;
+      this.sidebarItems = ['navigation'];
+      this._config = {
+        ...(this._config || {}),
+        sidebar_enabled: enabled,
+        sidebar_type: type,
+        sidebar_items: ['navigation'],
+        sidebar_header: sidebarHeaderDraft,
+        sidebar_appearance: appearance,
+        sidebar_canvas_height: height,
+        sidebar_cards: this._cloneJson_?.(this.sidebarCards || initialSidebarSettings.cards) || initialSidebarSettings.cards,
+      };
+      this._renderTabs?.();
+      this._renderSidebar_?.();
+      this._applyAutoScale?.();
+      syncPreviewColors();
+    };
+
+    if (chkSidebarEnabled) chkSidebarEnabled.checked = initialSidebarSettings.enabled;
+    sidebarTypeInputs.forEach((input) => {
+      input.checked = input.value === initialSidebarSettings.type;
+      input.addEventListener('change', () => updateSidebarSettingsPreview());
     });
-    btnSidebarHomeImageClear?.addEventListener('click', () => {
-      if (inpSidebarHomeImage) inpSidebarHomeImage.value = '';
-      if (inpSidebarHomeImageFile) inpSidebarHomeImageFile.value = '';
-      updateSidebarHomeImagePreview();
+    chkSidebarEnabled?.addEventListener('change', () => updateSidebarSettingsPreview());
+    for (const [, input] of sidebarAppearanceInputs) input?.addEventListener('input', () => updateSidebarSettingsPreview());
+    sidebarTitleInput?.addEventListener('input', () => updateSidebarSettingsPreview());
+    for (const input of [...sidebarWidgetInputs,sidebarWidgetStyle,sidebarAlignment]) input?.addEventListener('change', () => updateSidebarSettingsPreview());
+    for (const input of [sidebarWeatherEntity,sidebarCalendarEntities]) input?.addEventListener('change', () => updateSidebarSettingsPreview());
+    modal.querySelector('#ddc-sidebar-appearance-reset')?.addEventListener('click', () => {
+      populateSidebarAppearance({}, { content: false });
+      updateSidebarSettingsPreview();
     });
-    if (inpSidebarCalendarEntities) {
-      inpSidebarCalendarEntities.value = this._normalizeSidebarCalendarEntities_(
-        this.sidebarCalendarEntities ?? this._config?.sidebar_calendar_entities ?? this._config?.sidebar_calendars ?? []
-      ).join(', ');
-    }
-    const sidebarStyleForSettings = this._normalizeSidebarStyle_(this.sidebarStyle);
-    const sidebarDensityForSettings = this._normalizeSidebarDensity_(this.sidebarDensity);
-    const sidebarAccentForSettings = this._normalizeSidebarAccent_(this.sidebarAccent);
-    const styleInput = modal.querySelector(`input[name="ddc-sidebar-style"][value="${sidebarStyleForSettings}"]`);
-    const densityInput = modal.querySelector(`input[name="ddc-sidebar-density"][value="${sidebarDensityForSettings}"]`);
-    const accentInput = modal.querySelector(`input[name="ddc-sidebar-accent"][value="${sidebarAccentForSettings}"]`);
-    if (styleInput) styleInput.checked = true;
-    if (densityInput) densityInput.checked = true;
-    if (accentInput) accentInput.checked = true;
+    updateSidebarSettingsPreview({ applyToDashboard: false });
     renderDashboardThemeOptions();
 
     const yCfg = this._config?.background_youtube || {};
@@ -1471,6 +1569,8 @@ const dashboardSettingsMethods = {
     if (selEditorThemeMode) selEditorThemeMode.value = this._getEditorThemeMode_?.() || 'light';
     if (chkDashboardThemeOverrideAllDesign) chkDashboardThemeOverrideAllDesign.checked = !!this.dashboardThemeOverrideAllDesign;
     updateDashboardThemeState();
+    if (inpContainerRadius) inpContainerRadius.value = String(normalizeContainerRadius(this.containerRadius));
+    if (chkContainerBorder) chkContainerBorder.checked = this.containerBorder !== false;
     if (inpCBg)     inpCBg.value       = String(this.containerBackground || '');
     if (chkApplyPageBg) chkApplyPageBg.checked = !!this.applyBackgroundToPage;
     if (inpCardBg)  inpCardBg.value    = String(this.cardBackground || '');
@@ -2292,6 +2392,7 @@ const dashboardSettingsMethods = {
           id: t.id ?? t.key ?? t.label ?? 'tab',
           label: t.label ?? t.id ?? 'Tab',
           icon: t.icon ?? '',
+          icon_color: normalizeTabIconColor(t.icon_color),
           label_mode: t.label_mode ?? 'both', // 'icon' | 'text' | 'both' (optional)
           __raw: t                               // keep full object to avoid dropping fields
         };
@@ -2305,6 +2406,7 @@ const dashboardSettingsMethods = {
         id: t.id,
         label: t.label,
         icon: t.icon || '',
+        icon_color: normalizeTabIconColor(t.icon_color) || undefined,
         label_mode: t.label_mode || 'both'
       }));
       const nextDefault = defaultId ?? out[0]?.id ?? 'default';
@@ -2322,12 +2424,14 @@ const dashboardSettingsMethods = {
         id: t.id ?? t.key ?? t.label ?? 'tab',
         label: t.label ?? t.id ?? 'Tab',
         icon: t.icon || '',
+        icon_color: normalizeTabIconColor(t.icon_color) || undefined,
         label_mode: t.label_mode || 'both',
       }));
       this.defaultTab = nextDefault;
       if (!this.tabs.some((t) => t.id === this.activeTab)) {
         this.activeTab = this.defaultTab;
       }
+      try { syncTabsAutoReturnTargetOptions(out); } catch {}
 
       try { this._renderTabs?.(); } catch {}
       try { this._applyActiveTab?.(); } catch {}
@@ -2350,11 +2454,38 @@ const dashboardSettingsMethods = {
     const defaultTabId = () =>
       (this._config?.options?.default_tab) || this._config?.default_tab || (readTabs()[0]?.id);
 
+    const syncTabsAutoReturnTargetOptions = (tabs = readTabs()) => {
+      if (!selTabsAutoReturnTab) return;
+      const previous = String(
+        selTabsAutoReturnTab.value
+        || this.tabsAutoReturnTab
+        || this._config?.options?.tabs_auto_return_tab
+        || this._config?.tabs_auto_return_tab
+        || defaultTabId()
+        || ''
+      ).trim();
+      selTabsAutoReturnTab.innerHTML = '';
+      tabs.forEach((tab) => {
+        const option = document.createElement('option');
+        option.value = tab.id;
+        option.textContent = tab.label || tab.id;
+        selTabsAutoReturnTab.appendChild(option);
+      });
+      const resolved = this._resolveTabsAutoReturnTarget_?.(previous)
+        || tabs.find((tab) => tab.id === previous)?.id
+        || defaultTabId()
+        || tabs[0]?.id
+        || '';
+      selTabsAutoReturnTab.value = resolved;
+      selTabsAutoReturnTab.disabled = tabs.length < 2;
+    };
+
     const tabsListEl = modal.querySelector('#ddc-tabs-list');
 
     const renderTabs = () => {
       const tabs = readTabs();
       const def = defaultTabId();
+      syncTabsAutoReturnTargetOptions(tabs);
       tabsListEl.innerHTML = '';
 
       if (!tabs.length) {
@@ -2387,6 +2518,7 @@ const dashboardSettingsMethods = {
         // live icon preview
         const preview = document.createElement('ha-icon');
         preview.setAttribute('icon', t.icon || 'mdi:tab');
+        applyTabIconColor(preview, t.icon_color);
 
         // icon input
         const iconInput = document.createElement('input');
@@ -2397,6 +2529,23 @@ const dashboardSettingsMethods = {
         iconInput.addEventListener('change', async () => {
           t.icon = iconInput.value.trim();
           preview.setAttribute('icon', t.icon || 'mdi:tab');
+          tabs[idx] = t;
+          await writeTabs(tabs, def);
+        });
+
+        const colorInput = document.createElement('input');
+        colorInput.value = t.icon_color || '';
+        colorInput.placeholder = 'Theme color';
+        colorInput.setAttribute('aria-label', `Icon color for ${t.label || t.id}`);
+        colorInput.title = 'Icon color (CSS color or theme variable). Leave empty to follow the theme.';
+        colorInput.style.width = '130px';
+        colorInput.addEventListener('input', async () => {
+          const value = colorInput.value.trim();
+          const color = normalizeTabIconColor(value);
+          colorInput.setCustomValidity(value && !color ? 'Enter a valid CSS color, or leave empty.' : '');
+          if (!colorInput.checkValidity()) return;
+          t.icon_color = color;
+          applyTabIconColor(preview, color);
           tabs[idx] = t;
           await writeTabs(tabs, def);
         });
@@ -2416,6 +2565,7 @@ const dashboardSettingsMethods = {
         iconWrap.className = 'tab-icon-wrap';
         iconWrap.appendChild(preview);
         iconWrap.appendChild(iconInput);
+        iconWrap.appendChild(colorInput);
 
         nameWrap.appendChild(iconWrap);
         nameWrap.appendChild(nameInput);
@@ -2715,6 +2865,14 @@ const dashboardSettingsMethods = {
       scheduleParticlesPreview({ clearUrl: false, immediate: true });
     });
 
+    inpContainerRadius?.addEventListener('input', () => {
+      this.containerRadius = normalizeContainerRadius(inpContainerRadius.value);
+      this._applyDashboardThemeStyling_?.();
+    });
+    chkContainerBorder?.addEventListener('change', () => {
+      this.containerBorder = !!chkContainerBorder.checked;
+      this._applyDashboardThemeStyling_?.();
+    });
     // Live preview when manually editing background text inputs
     if (inpCBg) {
       inpCBg.addEventListener('input', () => {
@@ -2749,6 +2907,26 @@ const dashboardSettingsMethods = {
       if (!editorThemeModeCommitted) {
         this._setEditorThemeMode_?.(initialEditorThemeMode, { persist: false });
       }
+      if (!sidebarSettingsCommitted) {
+        this.sidebarEnabled = initialSidebarSettings.enabled;
+        this.sidebarType = initialSidebarSettings.type;
+        this.sidebarHeader = initialSidebarSettings.header;
+        this.sidebarAppearance = normalizeSidebarAppearance(initialSidebarSettings.appearance);
+        this.sidebarCanvasHeight = initialSidebarSettings.canvasHeight;
+        this.sidebarItems = ['navigation'];
+        this.sidebarCards = this._cloneJson_?.(initialSidebarSettings.cards) || initialSidebarSettings.cards;
+        this._config = {
+          ...(this._config || {}),
+          sidebar_enabled: initialSidebarSettings.enabled,
+          sidebar_type: initialSidebarSettings.type,
+          sidebar_items: ['navigation'],
+          sidebar_header: initialSidebarSettings.header,
+          sidebar_appearance: normalizeSidebarAppearance(initialSidebarSettings.appearance),
+          sidebar_canvas_height: initialSidebarSettings.canvasHeight,
+          sidebar_cards: this._cloneJson_?.(initialSidebarSettings.cards) || initialSidebarSettings.cards,
+        };
+        try { this._renderTabs?.(); this._renderSidebar_?.(); this._applyAutoScale?.(); } catch {}
+      }
       try { closeFeatureEditor(); } catch {}
       try { this.__ddcGridRO?.disconnect?.(); this.__ddcGridRO = null; } catch{}
       try { clearTimeout(particlesPreviewTimer); } catch {}
@@ -2761,13 +2939,25 @@ const dashboardSettingsMethods = {
     modal.querySelector('#ddc-settings-cancel')?.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
     // Save handler
     modal.querySelector('#ddc-settings-save')?.addEventListener('click', async (e) => {
+      if (this._canEditDashboard_?.() === false) { closeModal(); return; }
       e.stopPropagation();
+      const newStorageMode = selStorageMode?.value === 'lovelace' ? 'lovelace' : 'backend';
+      const storageModeChanged = newStorageMode !== (this._getStorageMode_?.() || 'backend');
+      if (storageModeChanged && !storageModeConfirm?.checked) {
+        showStorageModeError('Confirm which layout will be kept before switching storage.');
+        storageModeConfirm?.focus();
+        return;
+      }
       // Read values
       const newSize      = this._normalizeContainerSizeMode_(selSize?.value);
       const newResponsiveAspectLocks = this._normalizeResponsiveViewportAspectLocks_?.(this.responsiveViewportAspectLocks)
         || this.responsiveViewportAspectLocks
         || {};
       const newStorageKey = String(inpStorageKey?.value || this.storageKey || this._config?.storage_key || '').trim();
+      if (storageModeChanged && newStorageKey !== this.storageKey) {
+        showStorageModeError('Save a storage key change separately before changing storage mode.');
+        return;
+      }
       const newAuto      = newSize === 'auto' ? true : !!chkAuto?.checked;
       const newGrid      = parseInt(inpGrid?.value || '0', 10);
       const newAnim      = !!chkAnim?.checked;
@@ -2817,7 +3007,19 @@ const dashboardSettingsMethods = {
       const newYtAttachment = (selYtAttachment?.value || 'scroll');
       const newTabsPositionRaw = String(selTabsPosition?.value || this.tabsPosition || 'top').toLowerCase();
       const newTabsPosition = this._normalizeTabsPosition_(newTabsPositionRaw);
-      const newTabsSize = this._normalizeTabsSize_(rngTabsSize?.value ?? this.tabsSize);
+      const newTabsStyle = normalizeTabStyle({ ...Object.fromEntries(tabStyleInputs.map(([key, input]) => [key, input?.value])), active_shadow: tabShadowInput?.checked !== false });
+      const newTabsSize = this._normalizeTabsSize_(inpTabsSize?.value ?? rngTabsSize?.value ?? this.tabsSize);
+      const newTabsAutoReturnEnabled = !!chkTabsAutoReturn?.checked;
+      const newTabsAutoReturnTab = this._resolveTabsAutoReturnTarget_?.(selTabsAutoReturnTab?.value)
+        || this.defaultTab;
+      const newTabsAutoReturnDelay = this._normalizeTabsAutoReturnDelay_(
+        Number(inpTabsAutoReturnMinutes?.value || 5) * 60000
+      );
+      const newSidebarEnabled = !!chkSidebarEnabled?.checked;
+      const newSidebarType = this._normalizeSidebarType_?.(getSidebarTypeDraft()) || 'minimal';
+      const newSidebarHeader = this._normalizeSidebarHeader_(sidebarHeaderDraft);
+      const newSidebarAppearance = readSidebarAppearance();
+      const newSidebarCanvasHeight = initialSidebarSettings.canvasHeight;
       const newLayersEnabled = !!chkLayersEnabled?.checked;
       const newLayersButtonDetails = !!chkLayersButtonDetails?.checked;
       const normalizedLayers = normalizeLayerDrafts(
@@ -2921,6 +3123,9 @@ const dashboardSettingsMethods = {
         this.cardShadowEnabled = newShadow;
         this.cardShadowIntensity = newShadowIntensity;
         // Edit mode PIN
+        this.editPermissions = normalizeEditPermissions({ mode: selEditPolicy.value, users: [...selectedEditUsers] });
+        this._config = { ...(this._config || {}), edit_permissions: this.editPermissions };
+        if (this._config.options) this._config.options.edit_permissions = this.editPermissions;
         this.editModePin = newEditPin;
         // make sure the persisted config also carries it
         this._config = { ...(this._config || {}), edit_mode_pin: newEditPin };
@@ -2982,34 +3187,67 @@ const dashboardSettingsMethods = {
         this._applyAutoScale?.();
         this.tabsPosition = newTabsPosition;
         this.tabsSize = newTabsSize;
+        this.tabsCenterOnCanvas = !!chkTabsCenterOnCanvas?.checked;
+        this.tabsStyle = newTabsStyle;
+        this.tabsAutoReturnEnabled = newTabsAutoReturnEnabled;
+        this.tabsAutoReturnTab = newTabsAutoReturnTab;
+        this.tabsAutoReturnDelay = newTabsAutoReturnDelay;
         this._syncTabsSize_?.();
-        this.sidebarEnabled = false;
-        this.sidebarItems = [];
-        this.sidebarCards = [];
+        this.sidebarEnabled = newSidebarEnabled;
+        this.sidebarType = newSidebarType;
+        this.sidebarAppearance = newSidebarAppearance;
+        this.sidebarItems = ['navigation'];
+        this.sidebarHeader = newSidebarHeader;
+        this.sidebarCanvasHeight = newSidebarCanvasHeight;
+        this.sidebarCards = this._normalizeSidebarCards_(this.sidebarCards || initialSidebarSettings.cards);
         this._config = this._config || {};
         if (this._config.options) {
           this._config.options = {
             ...(this._config.options || {}),
             tabs_position: this.tabsPosition,
             tabs_size: this.tabsSize,
+            tabs_center_on_canvas: this.tabsCenterOnCanvas,
+            tabs_style: normalizeTabStyle(this.tabsStyle),
+            tabs_auto_return_enabled: this.tabsAutoReturnEnabled,
+            tabs_auto_return_tab: this.tabsAutoReturnTab,
+            tabs_auto_return_delay: this.tabsAutoReturnDelay,
+            sidebar_enabled: this.sidebarEnabled,
+            sidebar_type: this.sidebarType,
+            sidebar_appearance: normalizeSidebarAppearance(this.sidebarAppearance),
+            sidebar_items: ['navigation'],
+            sidebar_header: this.sidebarHeader,
+            sidebar_canvas_height: this.sidebarCanvasHeight,
+            sidebar_cards: this._cloneJson_(this.sidebarCards),
             card_overflow: newCardOverflow,
             layers_enabled: !!this.layersEnabled,
             layers_button_details: !!this.layersButtonDetails,
             layers: this._cloneJson_(normalizedLayers),
           };
-          this._deleteParkedSidebarOptions_(this._config.options);
         }
         this._config.tabs_position = this.tabsPosition;
+        this._config.tabs_center_on_canvas = this.tabsCenterOnCanvas;
         this._config.tabs_size = this.tabsSize;
-        this._deleteParkedSidebarOptions_(this._config);
+        this._config.tabs_style = normalizeTabStyle(this.tabsStyle);
+        this._config.tabs_auto_return_enabled = this.tabsAutoReturnEnabled;
+        this._config.tabs_auto_return_tab = this.tabsAutoReturnTab;
+        this._config.tabs_auto_return_delay = this.tabsAutoReturnDelay;
+        this._config.sidebar_enabled = this.sidebarEnabled;
+        this._config.sidebar_type = this.sidebarType;
+        this._config.sidebar_appearance = normalizeSidebarAppearance(this.sidebarAppearance);
+        this._config.sidebar_items = ['navigation'];
+        this._config.sidebar_header = this.sidebarHeader;
+        this._config.sidebar_canvas_height = this.sidebarCanvasHeight;
+        this._config.sidebar_cards = this._cloneJson_(this.sidebarCards);
         this._config.layers_enabled = !!this.layersEnabled;
         this._config.layers_button_details = !!this.layersButtonDetails;
         this._config.layers = this._cloneJson_(normalizedLayers);
         this._setDashboardLayers_(normalizedLayers, { refresh: true, persist: true });
         this._syncTabsPlacement_?.();
         this._renderTabs?.();
+        this._renderSidebar_?.();
         this._applyActiveTab?.();
         this._syncTabsWidth_?.();
+        this._updateTabsAutoReturnSettings_?.();
         // Disable overlap
         this.disableOverlap = newOverlap;
         // Container background
@@ -3024,6 +3262,14 @@ const dashboardSettingsMethods = {
           this.containerBackground = '';
           this._config = this._config || {};
           this._config.container_background = this.containerBackground;
+        }
+        this.containerRadius = normalizeContainerRadius(inpContainerRadius?.value);
+        this.containerBorder = !!chkContainerBorder?.checked;
+        this._config.container_radius = this.containerRadius;
+        this._config.container_border = this.containerBorder;
+        if (this._config.options) {
+          this._config.options.container_radius = this.containerRadius;
+          this._config.options.container_border = this.containerBorder;
         }
         this.applyBackgroundToPage = newApplyPageBg;
         this._config = this._config || {};
@@ -3222,6 +3468,10 @@ const dashboardSettingsMethods = {
           }
           this._config.card_overflow = this._normalizeCardOverflow_(this.cardOverflow);
           this._config.tabs_size = this._normalizeTabsSize_(this.tabsSize);
+          this._config.tabs_style = normalizeTabStyle(this.tabsStyle);
+          this._config.tabs_auto_return_enabled = !!this.tabsAutoReturnEnabled;
+          this._config.tabs_auto_return_tab = this._resolveTabsAutoReturnTarget_?.(this.tabsAutoReturnTab) || this.defaultTab;
+          this._config.tabs_auto_return_delay = this._normalizeTabsAutoReturnDelay_(this.tabsAutoReturnDelay);
           // Persist card shadow setting
           this._config.card_shadow            = !!this.cardShadowEnabled;
           this._config.card_shadow_intensity  = this._normalizeCardShadowIntensity_(this.cardShadowIntensity);
@@ -3245,41 +3495,28 @@ const dashboardSettingsMethods = {
         }
         this.__ddcTextLockDirty = true;
         this._scheduleTextResizeLockRefresh_?.(true);
-        // Persist changes
-        // Persist changes both to the Lovelace storage (when available) and to the YAML config.
-        // Calling both persistence helpers ensures that any changed settings override the
-        // YAML definitions on reload, and that storage dashboards remain in sync.
-        try {
-          const opts = this._exportableOptions?.() || {};
-          // Attempt to persist this card config into the Lovelace storage (visual editor).
-          const storagePromise = this._persistThisCardConfigToStorage_?.();
-          if (storagePromise && typeof storagePromise.catch === 'function') {
-            storagePromise.catch((err) => {
-              console.warn('[drag-and-drop-card] Storage save failed (is this a YAML dashboard?)', err);
-            });
-          }
-          // Independently persist the updated options into YAML. This is harmless on storage
-          // dashboards and will noop if the YAML is not editable. Suppress downloads to avoid
-          // prompting the user for backups during normal settings changes.
-          const yamlPromise = this._persistOptionsToYaml?.(opts, { noDownload: true });
-          if (yamlPromise && typeof yamlPromise.catch === 'function') {
-            yamlPromise.catch((yamlErr) => {
-              console.warn('[drag-and-drop-card] YAML persist failed', yamlErr);
-            });
-          }
-        } catch (persErr) {
-          console.warn('[drag-and-drop-card] Unexpected error persisting settings', persErr);
-        }
 
         try {
           this._setDashboardPackages_(normalizedPackages);
-          await this._saveLayout(true);
+          const saveButton = modal.querySelector('#ddc-settings-save');
+          if (saveButton) saveButton.disabled = true;
+          try {
+            if (storageModeChanged) await this._changeStorageMode_(newStorageMode);
+            else await this._persistDashboardSettings_();
+          } finally {
+            if (saveButton) saveButton.disabled = false;
+          }
         } catch (packageSaveErr) {
           console.warn('[drag-and-drop-card] Failed to persist package bundles', packageSaveErr);
+          showStorageModeError(packageSaveErr.message || 'Could not save the dashboard.');
+          return;
         }
       } catch (err) {
         console.warn('[drag-and-drop-card] Failed to apply settings', err);
+        showStorageModeError(err.message || 'Could not apply the settings.');
+        return;
       }
+      sidebarSettingsCommitted = true;
       closeModal();
     });
   }

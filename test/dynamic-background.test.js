@@ -187,3 +187,21 @@ test('layout previews hide the time and date when they are switched off', async 
   assert.match(html, /class="ss-mini-time" hidden/);
   assert.match(html, /class="ss-mini-date" hidden/);
 });
+
+test('screen saver text replaces entity placeholders with their current values', async () => {
+  const { installScreenSaverMethods } = await import('../src/media/screensaver.js');
+  class Host {}
+  installScreenSaverMethods(Host.prototype);
+  const host = new Host();
+  host._hass = {
+    states: {
+      'sensor.outdoor': { state: '17.6', attributes: { unit_of_measurement: '°C' } },
+      'weather.home': { state: 'sunny', attributes: {} },
+    },
+  };
+  assert.equal(host._getScreenSaverText_(), '');
+  host.screenSaverText = 'Dehors : {sensor.outdoor}\n{ weather.home } {sensor.missing}';
+  assert.equal(host._getScreenSaverText_(), 'Dehors : 17.6 °C\nsunny {sensor.missing}');
+  host._hass.formatEntityState = (stateObj) => (stateObj.state === 'sunny' ? 'Ensoleillé' : '17,6 °C');
+  assert.equal(host._getScreenSaverText_(), 'Dehors : 17,6 °C\nEnsoleillé {sensor.missing}');
+});

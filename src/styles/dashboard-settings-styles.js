@@ -321,6 +321,12 @@ export function getSettingsStyles() {
     background-size:cover;
     background-repeat:no-repeat;
   }
+  #ddc-setting-screenSaverText{
+    width:100%;
+    min-width:min(320px, 100%);
+    resize:vertical;
+    font:inherit;
+  }
   .ss-mini-time[hidden],
   .ss-mini-date[hidden]{
     display:none !important;

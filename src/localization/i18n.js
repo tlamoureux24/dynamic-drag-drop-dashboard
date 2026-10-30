@@ -243,6 +243,9 @@ const FR = Object.freeze({
     'Le fond dynamique suit le soleil et la météo, comme le tableau. S’il n’est pas activé, l’image de la disposition est affichée.',
   'Show time': 'Afficher l’heure', 'Show date': 'Afficher la date',
   'Custom image': 'Image personnalisée',
+  'Screen saver text': 'Texte de l’économiseur',
+  'Optional text under the time and date. Write an entity ID between braces to show its current value.':
+    'Texte facultatif sous l’heure et la date. Écrivez un identifiant d’entité entre accolades pour afficher sa valeur actuelle, par exemple {sensor.temperature_exterieure}.',
   'Only selected Home Assistant entities appear. Empty slots stay hidden.': 'Seules les entités Home Assistant sélectionnées apparaissent. Les emplacements vides restent masqués.',
   'Controls where the regular tabs bar sits around the dashboard.': 'Définit la position de la barre d’onglets autour du tableau de bord.',
   'Scales the tab controls while preserving touch-friendly sizing and viewport alignment.':

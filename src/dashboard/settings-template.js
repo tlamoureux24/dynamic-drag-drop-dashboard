@@ -1109,6 +1109,20 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
         <div class="hint">Shown when the screen saver background is set to Custom image.</div>
       </div>
 
+      <!-- Custom text -->
+      <div class="setting" role="group" aria-labelledby="lbl-ss-text">
+        <div class="row">
+          <div class="title">
+            <ha-icon icon="mdi:text" aria-hidden="true"></ha-icon>
+            <label id="lbl-ss-text" for="ddc-setting-screenSaverText">Screen saver text</label>
+          </div>
+          <div class="control">
+            <textarea id="ddc-setting-screenSaverText" rows="2" placeholder="Outside: {sensor.outdoor_temperature}"></textarea>
+          </div>
+        </div>
+        <div class="hint">Optional text under the time and date. Write an entity ID between braces to show its current value.</div>
+      </div>
+
       <!-- Time and date -->
       <div class="setting" role="group" aria-labelledby="lbl-ss-show-time">
         <div class="row">

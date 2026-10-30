@@ -189,6 +189,7 @@ const setConfigMethods = {
       this.screenSaverBackground = ['dynamic', 'style', 'custom'].includes(config.screen_saver_background) ? config.screen_saver_background : '';
       this.screenSaverShowTime = config.screen_saver_show_time !== false;
       this.screenSaverShowDate = config.screen_saver_show_date !== false;
+      this.screenSaverText = String(config.screen_saver_text ?? '');
 
       if ((this.autoResizeCards || this._normalizeContainerSizeMode_(this.containerSizeMode || this.container_size_mode)==='auto')) this._startScaleWatch?.(); else this._stopScaleWatch?.();
       this._applyAutoScale?.();

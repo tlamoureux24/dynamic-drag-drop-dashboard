@@ -271,6 +271,7 @@ const dashboardSettingsMethods = {
     const screenSaverImageSetting = modal.querySelector('#ddc-screenSaverImageSetting');
     const chkScreenSaverShowTime = modal.querySelector('#ddc-setting-screenSaverShowTime');
     const chkScreenSaverShowDate = modal.querySelector('#ddc-setting-screenSaverShowDate');
+    const inpScreenSaverText = modal.querySelector('#ddc-setting-screenSaverText');
 
     const selBgMode           = modal.querySelector('#ddc-bg-mode');
     const backgroundSections = Array.from(modal.querySelectorAll('[data-bg-section]'));
@@ -1733,6 +1734,13 @@ const dashboardSettingsMethods = {
       });
     }
     syncScreenSaverImageSetting();
+    if (inpScreenSaverText) {
+      inpScreenSaverText.value = this.screenSaverText || '';
+      inpScreenSaverText.addEventListener('input', () => {
+        this.screenSaverText = inpScreenSaverText.value;
+        refreshLiveScreenSaverImage();
+      });
+    }
     for (const [toggle, key] of [[chkScreenSaverShowTime, 'screenSaverShowTime'], [chkScreenSaverShowDate, 'screenSaverShowDate']]) {
       if (!toggle) continue;
       toggle.checked = this[key] !== false;
@@ -3106,6 +3114,7 @@ const dashboardSettingsMethods = {
       const newScreenSaverBackground = selScreenSaverBackground?.value || this._getScreenSaverBackgroundSource_?.() || 'style';
       const newScreenSaverShowTime  = chkScreenSaverShowTime ? !!chkScreenSaverShowTime.checked : this.screenSaverShowTime !== false;
       const newScreenSaverShowDate  = chkScreenSaverShowDate ? !!chkScreenSaverShowDate.checked : this.screenSaverShowDate !== false;
+      const newScreenSaverText      = String(inpScreenSaverText ? inpScreenSaverText.value : (this.screenSaverText || '')).trim();
       const newScreenSaverEntities  = this._normalizeScreenSaverEntities_?.(screenSaverEntityDrafts) || [];
 
       // hero image not exposed to user
@@ -3438,6 +3447,7 @@ const dashboardSettingsMethods = {
         this.screenSaverBackground = newScreenSaverBackground;
         this.screenSaverShowTime = newScreenSaverShowTime;
         this.screenSaverShowDate = newScreenSaverShowDate;
+        this.screenSaverText = newScreenSaverText;
         this.screenSaverEntities = newScreenSaverEntities;
         this._updateScreensaverSettings?.();
 
@@ -3542,6 +3552,8 @@ const dashboardSettingsMethods = {
           this._config.screen_saver_background = this.screenSaverBackground;
           this._config.screen_saver_show_time  = this.screenSaverShowTime !== false;
           this._config.screen_saver_show_date  = this.screenSaverShowDate !== false;
+          if (this.screenSaverText) this._config.screen_saver_text = this.screenSaverText;
+          else delete this._config.screen_saver_text;
           this._config.screen_saver_entities   = this._cloneJson_?.(this.screenSaverEntities) || this.screenSaverEntities;
           // Background image src is already updated in this._config.background_image above
         } catch (cfgErr) {

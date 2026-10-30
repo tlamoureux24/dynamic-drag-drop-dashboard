@@ -397,7 +397,7 @@ const designImportExportMethods = {
       'background_mode','background_image','background_dynamic','background_particles','background_youtube',
   
       // Screen saver
-      'screen_saver_enabled','screen_saver_delay','screen_saver_style','screen_saver_image','screensaver_image','screen_saver_background_image','screen_saver_entities', 'screen_saver_background', 'screen_saver_show_time', 'screen_saver_show_date',
+      'screen_saver_enabled','screen_saver_delay','screen_saver_style','screen_saver_image','screensaver_image','screen_saver_background_image','screen_saver_entities', 'screen_saver_background', 'screen_saver_show_time', 'screen_saver_show_date', 'screen_saver_text',
     ];
     // ----------------------------------
   

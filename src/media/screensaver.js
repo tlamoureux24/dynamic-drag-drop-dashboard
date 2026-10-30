@@ -80,6 +80,23 @@ const screenSaverMethods = {
       : { url: this._getScreenSaverBackgroundImage_(style), source: 'postimg' };
   },
 
+  // Free text; {entity_id} is replaced by that entity's formatted state.
+  _getScreenSaverText_() {
+    const template = String(this.screenSaverText ?? '').trim();
+    if (!template) return '';
+    const states = this._hass?.states || this.hass?.states || {};
+    return template.replace(/\{\s*([a-z0-9_]+\.[a-z0-9_]+)\s*\}/gi, (match, entityId) => {
+      const stateObj = states[entityId.toLowerCase()];
+      if (!stateObj) return match;
+      try {
+        const formatted = (this._hass || this.hass)?.formatEntityState?.(stateObj);
+        if (formatted) return formatted;
+      } catch {}
+      const unit = stateObj.attributes?.unit_of_measurement;
+      return unit ? `${stateObj.state} ${unit}` : String(stateObj.state);
+    });
+  },
+
   _screenSaverShowsTime_() {
     return this.screenSaverShowTime !== false;
   },
@@ -812,6 +829,7 @@ const screenSaverMethods = {
             <span class="ss-period">${esc(time.period)}</span>
           </div>
           <div class="screensaver-date">${esc(time.date)}</div>
+          <p class="ss-custom-text">${esc(this._getScreenSaverText_())}</p>
           <p class="ss-quote">${esc(statusSummary)}</p>
         </section>
         <section class="screensaver-calendar" aria-label="Calendar"></section>
@@ -1088,6 +1106,11 @@ const screenSaverMethods = {
     }
     if (periodEl) {
       periodEl.textContent = parts.period || '';
+    }
+    const customTextEl = overlay?.querySelector('.ss-custom-text');
+    if (customTextEl) {
+      const text = this._getScreenSaverText_();
+      if (customTextEl.textContent !== text) customTextEl.textContent = text;
     }
     if (dayTile) {
       const monthEl = dayTile.querySelector('span');

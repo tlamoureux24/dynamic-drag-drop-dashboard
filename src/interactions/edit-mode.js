@@ -322,6 +322,8 @@ const editModeMethods = {
     const wraps = this.cardContainer?.querySelectorAll?.('.card-wrapper') || [];
     wraps.forEach((w) => {
       w.classList.toggle('editing', this.editMode);
+      // Hidden wrappers get their edit icons when shown (_applyWrapDisplayState_).
+      if (this.editMode && w.style.display !== 'none') this._restoreWrapperEditIcons_?.(w);
       try { w.firstElementChild?.__ddcSetEditPreviewMode?.(this.editMode); } catch {}
       w.querySelectorAll('.resize-handle').forEach((handle) => {
         handle.style.display = this.editMode ? 'flex' : 'none';

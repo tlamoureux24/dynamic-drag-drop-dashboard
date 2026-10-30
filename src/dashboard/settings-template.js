@@ -1088,7 +1088,7 @@ export function getDashboardSettingsTemplate(screenSaverStyleOptionsHtml = '') {
             </div>
           </div>
         </div>
-        <div class="hint">Optional image that replaces the selected preset background while keeping the same screen saver layout.</div>
+        <div class="hint">Optional image that replaces the selected preset background while keeping the same screen saver layout. Without one, an active dynamic background is used.</div>
       </div>
 
       <!-- Status entities -->

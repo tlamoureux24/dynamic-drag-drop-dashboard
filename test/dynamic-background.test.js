@@ -129,3 +129,27 @@ test('a page-wide background follows the active dynamic scene', async () => {
   assert.equal(visual.lovelaceBackground, '/local/scenes/crepuscule-clair.png');
   assert.equal(visual.backgroundSize, 'cover');
 });
+
+test('the screen saver shows the dynamic scene unless a custom image is set', async () => {
+  const { installScreenSaverMethods } = await import('../src/media/screensaver.js');
+  class Host {}
+  installScreenSaverMethods(Host.prototype);
+  const host = new Host();
+  const props = {};
+  host.screenSaverOverlay = { dataset: {}, style: { setProperty: (k, v) => { props[k] = v; }, removeProperty: (k) => { delete props[k]; } } };
+  host._config = { background_dynamic: { enabled: true } };
+  host.__dynamicBackgroundActive = { src: '/local/scenes/soiree-clair.png' };
+  host.__screenSaverBgLoaded = new Set(['/local/scenes/soiree-clair.png', '/local/mine.png']);
+
+  host._applyScreenSaverBackgroundImage_('visionos_glass');
+  assert.equal(props['--ss-bg-image'], 'url("/local/scenes/soiree-clair.png")');
+  assert.equal(host.screenSaverOverlay.dataset.ssBgSource, 'dynamic');
+
+  host.screenSaverImage = '/local/mine.png';
+  host._applyScreenSaverBackgroundImage_('visionos_glass');
+  assert.equal(props['--ss-bg-image'], 'url("/local/mine.png")');
+
+  host.screenSaverImage = '';
+  host._config.background_dynamic.enabled = false;
+  assert.equal(host._getScreenSaverDynamicImage_(), '');
+});

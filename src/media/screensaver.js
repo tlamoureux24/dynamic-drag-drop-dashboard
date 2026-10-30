@@ -54,6 +54,13 @@ const screenSaverMethods = {
     ).trim();
   },
 
+  // Without a custom image, the screen saver shows the dashboard's current
+  // dynamic scene so it follows the sun and weather like the canvas.
+  _getScreenSaverDynamicImage_() {
+    if (!this._config?.background_dynamic?.enabled) return '';
+    return String(this.__dynamicBackgroundActive?.src || '').trim();
+  },
+
   _screenSaverCssUrl_(url = '') {
     return `url("${String(url).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`;
   },
@@ -90,8 +97,9 @@ const screenSaverMethods = {
     if (!overlay) return;
     const styleId = this._normalizeScreenSaverStyle_?.(style) || 'visionos_glass';
     const customUrl = this._getScreenSaverCustomImage_?.() || '';
-    const url = customUrl || this._getScreenSaverBackgroundImage_(styleId);
-    const source = customUrl ? 'custom' : 'postimg';
+    const dynamicUrl = customUrl ? '' : (this._getScreenSaverDynamicImage_?.() || '');
+    const url = customUrl || dynamicUrl || this._getScreenSaverBackgroundImage_(styleId);
+    const source = customUrl ? 'custom' : (dynamicUrl ? 'dynamic' : 'postimg');
     const token = `${styleId}:${url}`;
     this.__screenSaverBgToken = token;
 

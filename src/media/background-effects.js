@@ -41,11 +41,13 @@ const backgroundEffectsMethods = {
           if (this.__dynamicBackgroundSignature !== signature) return;
           this.__dynamicBackgroundActive = resolved;
           this._applyBackgroundFromConfig?.();
+          this._applyScreenSaverBackgroundImage_?.(this.screenSaverStyle);
           requestAnimationFrame(() => cont.classList.remove('ddc-bg-transitioning'));
         }, Math.round(transitionMs / 2));
       } else {
         this.__dynamicBackgroundActive = resolved;
         this._applyBackgroundFromConfig?.();
+        this._applyScreenSaverBackgroundImage_?.(this.screenSaverStyle);
       }
     };
     if (typeof globalThis.Image !== 'function') {

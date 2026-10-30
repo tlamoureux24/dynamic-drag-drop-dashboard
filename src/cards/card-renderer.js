@@ -683,6 +683,13 @@ const cardBuilderMethods = {
       this._syncBubblePopupWrappers_?.();
     } catch {}
     try { this._renderConnectors_?.(); } catch {}
+    // The fragment may be committed several frames after its wrappers were
+    // created, so give visible wrappers their handles once they are placed.
+    if (this.editMode) {
+      for (const wrap of Array.from(this.cardContainer?.children || [])) {
+        if (wrap.style?.display !== 'none') this._restoreWrapperEditIcons_?.(wrap, { handlesOnly: true });
+      }
+    }
     try { this._scheduleInactiveTabPreload_?.(); } catch {}
   },
 
@@ -1091,8 +1098,11 @@ const cardBuilderMethods = {
     // until the wrapper is shown in edit mode. Even then, only the handles are
     // always visible; the card menu and shortcuts appear on hover, focus or
     // selection, so their icons are created at that point.
+    // Wrappers built while editing (including a rebuild that is still running
+    // when edit mode starts) are deferred too: once attached and placed on
+    // their tab, the visible ones get their handles on the next frame.
     _deferWrapperEditIcons_(wrap) {
-      if (!wrap || this.editMode) return;
+      if (!wrap) return;
       const card = wrap.firstElementChild;
       let deferred = 0;
       for (const child of Array.from(wrap.children)) {
@@ -1112,6 +1122,13 @@ const cardBuilderMethods = {
       };
       wrap.addEventListener('pointerenter', restoreOnDemand);
       wrap.addEventListener('focusin', restoreOnDemand);
+      if (this.editMode) {
+        requestAnimationFrame(() => {
+          if (this.editMode && wrap.isConnected && wrap.style.display !== 'none') {
+            this._restoreWrapperEditIcons_(wrap, { handlesOnly: true });
+          }
+        });
+      }
     },
 
     _restoreWrapperEditIcons_(wrap, { handlesOnly = false } = {}) {

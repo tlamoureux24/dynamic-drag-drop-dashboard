@@ -109,3 +109,23 @@ test('dynamic background selects weather and time with safe fallbacks', () => {
   const unknown = { states: { 'weather.home': { state: 'exceptional' } } };
   assert.equal(resolveDynamicBackground(config, unknown, new Date(2026, 7, 21, 22, 0))?.src, '/local/fallback.webp');
 });
+
+test('a page-wide background follows the active dynamic scene', async () => {
+  const { installBackgroundEffectsMethods } = await import('../src/media/background-effects.js');
+  const host = {
+    _config: {
+      background_mode: 'image',
+      background_image: { src: '/local/day.png', size: 'cover' },
+      background_dynamic: { enabled: true },
+    },
+    _getDashboardBackgroundMode_: () => 'image',
+    _normalizeMediaUrl_: (url) => url,
+  };
+  installBackgroundEffectsMethods(host);
+
+  assert.equal(host._getPageBackgroundVisual_().lovelaceBackground, '/local/day.png');
+  host.__dynamicBackgroundActive = { src: '/local/scenes/crepuscule-clair.png' };
+  const visual = host._getPageBackgroundVisual_();
+  assert.equal(visual.lovelaceBackground, '/local/scenes/crepuscule-clair.png');
+  assert.equal(visual.backgroundSize, 'cover');
+});

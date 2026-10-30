@@ -10,13 +10,13 @@ const integrationFile = (name) => readFile(
 test('the bundled module URL carries the integration version so browsers fetch each release', async () => {
   const source = await integrationFile('__init__.py');
   assert.match(source, /module_url = f"\{FRONTEND_URL\}\?v=\{integration\.version\}"/);
-  assert.match(source, /add_extra_js_url\(hass, module_url\)/);
   assert.doesNotMatch(source, /frontend_extra_module_url/);
 });
 
-test('the module is also a Lovelace resource, so cached pages without the extra module still load it', async () => {
+test('the module is a Lovelace resource, and an extra module only when resources are YAML-managed', async () => {
   const source = await integrationFile('__init__.py');
-  assert.match(source, /await _async_sync_lovelace_resource\(hass, module_url\)/);
+  // Cached pages keep importing an old extra module, which then runs first.
+  assert.match(source, /if not await _async_sync_lovelace_resource\(hass, module_url\):\s*add_extra_js_url\(hass, module_url\)/);
   assert.match(source, /async def async_remove_entry[\s\S]*_async_sync_lovelace_resource\(hass, None\)/);
   const manifest = JSON.parse(await integrationFile('manifest.json'));
   assert.ok(manifest.dependencies.includes('lovelace'));
